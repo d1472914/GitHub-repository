@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="glass-card mb-4">
+            <h2 class="fw-bold mb-4 text-gradient text-center">新增電費分攤計算</h2>
+            
+            <form method="POST" action="{{ url_for('electricity.new_bill') }}">
+                <div class="row g-3 mb-4">
+                    <h5 class="fw-bold border-bottom border-secondary pb-2">帳單基本資訊</h5>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">計費起始日期</label>
+                        <input type="date" class="form-control form-control-glass" name="period_start" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">計費結束日期</label>
+                        <input type="date" class="form-control form-control-glass" name="period_end" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">台電總帳單金額 (元)</label>
+                        <input type="number" step="0.01" class="form-control form-control-glass" name="total_amount" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-secondary">本期總用電度數 (度)</label>
+                        <input type="number" step="0.01" class="form-control form-control-glass" name="total_degrees" required>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <h5 class="fw-bold border-bottom border-secondary pb-2">各房間獨立電表度數</h5>
+                    {% for room in rooms %}
+                    <div class="col-12 p-3 border border-secondary rounded mb-2" style="background: rgba(255,255,255,0.02);">
+                        <h6 class="text-warning mb-3">{{ room.name }}</h6>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small text-secondary">起始度數</label>
+                                <input type="number" step="0.01" class="form-control form-control-glass" name="start_degree_{{ room.id }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-secondary">結束度數</label>
+                                <input type="number" step="0.01" class="form-control form-control-glass" name="end_degree_{{ room.id }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-gradient btn-lg">開始計算分攤</button>
+                    <a href="{{ url_for('electricity.dashboard') }}" class="btn btn-outline-light mt-2">取消返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
