@@ -1,3 +1,4 @@
+ jue_yun_expense
 # Environments
 .env
 .venv
@@ -16,9 +17,39 @@ __pycache__/
 # IDEs
 .idea/
 .vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+master
 *.swp
 *.swo
 
 # OS
 .DS_Store
 Thumbs.db
+jue_yun_expense
+
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log master
