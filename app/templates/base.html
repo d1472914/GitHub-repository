@@ -14,18 +14,12 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark navbar-glass sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold text-gradient" href="{{ url_for('electricity.dashboard') }}">宿舍共好</a>
+            <a class="navbar-brand fw-bold text-gradient" href="{{ url_for('electricity.index') }}">宿舍共好</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-toggle="target" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('electricity.dashboard') }}">歷史帳單</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('electricity.new_bill') }}">新增電費分攤</a>
-                    </li>
                     <li class="nav-item">
                         <a class="nav-link text-warning fw-bold" href="{{ url_for('electricity.estimate') }}">⚡ 即時電費估算</a>
                     </li>
