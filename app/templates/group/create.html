@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}建立室友群組 - 室友共好{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="col-md-6">
+        <div class="card card-custom border-0 shadow-lg">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="display-5 text-primary mb-3"><i class="bi bi-house-add"></i></div>
+                    <h2 class="fw-bold mb-1">建立新的室友群組</h2>
+                    <p class="text-muted">為您的寢室或合租房屋建立一個共同的管理群組</p>
+                </div>
+                <form action="{{ url_for('group.create') }}" method="POST">
+                    <div class="mb-4">
+                        <label for="name" class="form-label font-monospace small text-muted">群組名稱 (例如：302號房, 幸福公寓)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-tag"></i></span>
+                            <input type="text" class="form-control bg-light border-0" id="name" name="name" placeholder="請輸入群組名稱" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient-primary w-100 py-2.5 rounded-3 mb-3">
+                        <i class="bi bi-plus-circle me-1"></i>確認建立
+                    </button>
+                    <div class="text-center">
+                        <span class="text-muted small">已經有室友建立了群組嗎？</span>
+                        <a href="{{ url_for('group.join') }}" class="text-decoration-none small fw-semibold text-primary">輸入邀請碼加入</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

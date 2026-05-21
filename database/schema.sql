@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
     FOREIGN KEY (group_id) REFERENCES groups (id)
 );
 
+-- 補上 groups.created_by 的外鍵（因建表順序，用觸發器或應用層保證）
+
 -- ----- 3. 公約 -----
 CREATE TABLE IF NOT EXISTS agreements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
