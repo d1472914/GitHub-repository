@@ -1,13 +1,16 @@
 import os
-from app import create_app, init_db
+from dotenv import load_dotenv
+from app import create_app
 
-# 建立 Flask 應用程式實例
+# Load environment variables from .env if it exists
+load_dotenv()
+
 app = create_app()
 
-# 初始化資料庫
-with app.app_context():
-    init_db()
-
 if __name__ == '__main__':
-    # 啟動開發伺服器
-    app.run(debug=True)
+    # Run server on port 5000
+    app.run(
+        host='0.0.0.0', 
+        port=5000, 
+        debug=os.environ.get('FLASK_DEBUG', 'True') == 'True'
+    )

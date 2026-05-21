@@ -1,38 +1,39 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
-from app.models.group import Group
-from app.models.chore import Chore
-from app.models.notification import Notification
-from app.models.inventory_item import InventoryItem
+from app.models import notification as noti_model
+from app.models import chore as chore_model
+from app.models import group as group_model
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
-@dashboard_bp.route('/')
+@dashboard_bp.route('/dashboard')
 @login_required
 def index():
-    """首頁儀表板"""
+    # 若未加入群組，重導向加入或建立群組頁面
     if not current_user.group_id:
-        return redirect(url_for('group.group_home'))
+        flash("您尚未加入任何寢室或租屋群組，請先建立或加入一個！", "info")
+        return redirect(url_for('group.create'))
         
-    group = Group.get_by_id(current_user.group_id)
-    notifications = Notification.get_unread_by_user(current_user.id)
-    pending_chores = Chore.get_pending_by_user(current_user.id)
-    
-    # 獲取低庫存物資
-    all_items = InventoryItem.get_by_group(current_user.group_id)
-    low_stock_items = [item for item in all_items if item.is_low_stock]
-    
-    return render_template(
-        'dashboard/index.html',
-        group=group,
-        notifications=notifications,
-        pending_chores=pending_chores,
-        low_stock_items=low_stock_items
-    )
-
-@dashboard_bp.route('/notifications/read-all', methods=['POST'])
-@login_required
-def read_all_notifications():
-    """一鍵已讀所有通知"""
-    Notification.mark_all_as_read(current_user.id)
-    return redirect(url_for('dashboard.index'))
+    try:
+        # 取得未讀通知
+        unread_notifications = noti_model.get_unread_by_user(current_user.id)
+        
+        # 取得待辦任務
+        all_chores = chore_model.get_all()
+        pending_chores = [
+            c for c in all_chores 
+            if c['assigned_to'] == current_user.id and c['status'] == 'pending'
+        ]
+        
+        # 取得群組資訊
+        group_info = group_model.get_by_id(current_user.group_id)
+        
+        return render_template(
+            'dashboard/index.html',
+            notifications=unread_notifications,
+            chores=pending_chores,
+            group=group_info
+        )
+    except Exception as e:
+        flash(f"載入儀表板時發生錯誤：{e}", "danger")
+        return render_template('dashboard/index.html', notifications=[], chores=[], group=None)

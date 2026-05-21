@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宿舍生活習慣調查</title>
+    <!-- 使用 Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient-start: #0f172a;
+            --bg-gradient-end: #1e293b;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        input[type="text"], input[type="time"], input[type="number"] {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.25);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #818cf8;
+            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.4s ease-in;
+            font-weight: 500;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .alert.success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ade80;
+        }
+
+        .alert.danger {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .habit-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .habit-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .habit-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #818cf8, #c084fc);
+            opacity: 0.8;
+        }
+
+        .habit-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .habit-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 18px;
+            color: #e2e8f0;
+        }
+
+        .habit-detail {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .habit-detail:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .habit-detail span:first-child {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .habit-detail span:last-child {
+            font-weight: 600;
+            color: #f8fafc;
+        }
+        
+        /* 差異提示 (簡單版) */
+        .comparison-note {
+            margin-top: 25px;
+            padding: 16px;
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid #f59e0b;
+            border-radius: 0 12px 12px 0;
+            color: #fcd34d;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ 宿舍共好：生活習慣調查</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h2 class="card-title">📝 輸入你的生活習慣</h2>
+            <form method="POST" action="/">
+                <div class="form-group">
+                    <label for="name">你的暱稱 / 名字</label>
+                    <input type="text" id="name" name="name" required placeholder="例如：床位A 小明">
+                </div>
+                <div class="form-group">
+                    <label for="bedtime">通常預計就寢時間</label>
+                    <input type="time" id="bedtime" name="bedtime" required>
+                </div>
+                <div class="form-group">
+                    <label for="ac_temp">冷氣習慣溫度 (°C)</label>
+                    <input type="number" id="ac_temp" name="ac_temp" step="0.5" required placeholder="例如：26.5">
+                </div>
+                <div class="form-group">
+                    <label for="light_noise">睡眠感官需求 (光線與聲音)</label>
+                    <input type="text" id="light_noise" name="light_noise" required placeholder="例如：要全黑且絕對安靜 / 留小燈加風扇聲">
+                </div>
+                <div class="form-group">
+                    <label for="smell_tolerance">味道敏感度 (可在房間吃重口味食物嗎？)</label>
+                    <input type="text" id="smell_tolerance" name="smell_tolerance" required placeholder="例如：不可 / 可以，但要開窗通風 / 完全沒差">
+                </div>
+                <button type="submit">儲存資料</button>
+            </form>
+        </div>
+
+        {% if habits %}
+        <div class="card" style="animation-delay: 0.2s;">
+            <h2 class="card-title">👀 室友習慣大公開</h2>
+            <div class="habit-list">
+                {% for habit in habits %}
+                <div class="habit-card">
+                    <h3>{{ habit.name }}</h3>
+                    <div class="habit-detail">
+                        <span>就寢時間</span>
+                        <span>{{ habit.bedtime }}</span>
+                    </div>
+                    <div class="habit-detail">
+                        <span>冷氣溫度</span>
+                        <span>{{ habit.ac_temp }} °C</span>
+                    </div>
+                    <div class="habit-detail">
+                        <span>睡眠感官</span>
+                        <span style="text-align: right; max-width: 60%;">{{ habit.light_noise }}</span>
+                    </div>
+                    <div class="habit-detail">
+                        <span>味道敏感度</span>
+                        <span style="text-align: right; max-width: 60%;">{{ habit.smell_tolerance }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if habits|length > 1 %}
+            <div class="comparison-note">
+                <strong>💡 溫馨提醒：</strong> 發現彼此習慣不同時，請互相包容與協調！若作息差異較大，建議可以討論個「熄燈時間」或「靜音時段」喔！
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,111 +1,71 @@
 {% extends "base.html" %}
 
-{% block title %}新增開支記帳 - RoomieCo{% endblock %}
+{% block title %}登記消費 - 室友共好{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('expense.list_expenses') }}" class="text-decoration-none text-primary">共同開支</a></li>
-                <li class="breadcrumb-item active" aria-current="page">新增開支</li>
-            </ol>
-        </nav>
-    </div>
-</div>
-
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card main-card p-4">
-            <h3 class="font-weight-bold text-dark mb-4"><i class="bi bi-journal-plus text-success me-2"></i>記錄共同開支</h3>
-            <p class="text-muted">在這裡輸入開銷金額，並選擇要均分的分攤對象，系統將自動為每人分配帳務關係。</p>
-            
-            <form action="{{ url_for('expense.create_expense') }}" method="POST">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-8">
-                        <label for="title" class="form-label font-weight-bold">品項名稱 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="title" name="title" 
-                               value="{{ title if title else '' }}" 
-                               placeholder="例如：好市多衛生紙三箱、一月份瓦斯費、公用洗手乳" required style="border-radius: 8px;">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="category" class="form-label font-weight-bold">開支類別</label>
-                        <select class="form-select" id="category" name="category" style="border-radius: 8px;">
-                            {% set sel_cat = category if category else '' %}
-                            <option value="食物" {% if sel_cat == '食物' %}selected{% endif %}>食物零食</option>
-                            <option value="日常用品" {% if sel_cat == '日常用品' or not sel_cat %}selected{% endif %}>日常用品</option>
-                            <option value="水電瓦斯" {% if sel_cat == '水電瓦斯' %}selected{% endif %}>水電瓦斯</option>
-                            <option value="房租" {% if sel_cat == '房租' %}selected{% endif %}>房租金</option>
-                            <option value="其他" {% if sel_cat == '其他' %}selected{% endif %}>其他雜支</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <label for="amount" class="form-label font-weight-bold">金額 (TWD) <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light font-weight-bold text-muted">$</span>
-                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" 
-                                   value="{{ amount if amount else '' }}" 
-                                   placeholder="0.00" min="0.01" required style="border-radius: 0 8px 8px 0;">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="paid_by" class="form-label font-weight-bold">付款人 <span class="text-danger">*</span></label>
-                        <select class="form-select" id="paid_by" name="paid_by" required style="border-radius: 8px;">
-                            {% for m in members %}
-                                <option value="{{ m.id }}" {% if m.id == current_user.id %}selected{% endif %}>
-                                    {{ m.nickname }} ({% if m.id == current_user.id %}自己{% else %}室友{% endif %})
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="card p-3 mb-4 bg-light border-0" style="border-radius: 12px;">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label class="form-label font-weight-bold m-0"><i class="bi bi-people-fill text-muted me-2"></i>分攤室友 <span class="text-danger">*</span></label>
-                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 text-primary" id="btn-select-all">全選 / 全不選</button>
+    <div class="col-md-8">
+        <div class="card card-custom border-0 shadow">
+            <div class="card-header card-header-custom">
+                <i class="bi bi-cart-plus-fill text-success me-2"></i>登記新開支
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('expense.create_expense') }}" method="POST">
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label font-monospace small text-muted">消費項目名稱</label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="例如：廚房紙巾、公用清潔劑" required autocomplete="off">
                     </div>
                     
-                    <div class="row g-2">
-                        {% for m in members %}
-                            <div class="col-md-4">
-                                <div class="form-check p-2 border rounded-3 bg-white d-flex align-items-center">
-                                    <input class="form-check-input ms-1 me-2 split-user-checkbox" type="checkbox" name="split_users" value="{{ m.id }}" id="split_user_{{ m.id }}" checked>
-                                    <label class="form-check-label font-weight-bold w-100" style="cursor: pointer;" for="split_user_{{ m.id }}">
-                                        {{ m.nickname }}
-                                    </label>
-                                </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="amount" class="form-label font-monospace small text-muted">總金額 (元)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" placeholder="0.00" required>
                             </div>
-                        {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category" class="form-label font-monospace small text-muted">開支類別</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="" disabled selected>--- 請選擇類別 ---</option>
+                                <option value="daily_goods">🛍️ 日常物資</option>
+                                <option value="rent">🏠 房屋房租</option>
+                                <option value="water_electricity">⚡ 水電瓦斯</option>
+                                <option value="other">🏷️ 其他</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-text text-muted mt-2">勾選的成員將會被均分此筆款項。付款人本人通常也需打勾分攤。</div>
-                </div>
-                
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('expense.list_expenses') }}" class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
-                        取消
-                    </a>
-                    <button type="submit" class="btn btn-gradient-primary w-75">
-                        確認記帳
-                    </button>
-                </div>
-            </form>
+                    
+                    <div class="mb-4">
+                        <label class="form-label d-block font-monospace small text-muted">分攤室友 (預設勾選所有人)</label>
+                        <div class="bg-light p-3 rounded-3">
+                            <div class="row">
+                                {% for m in members %}
+                                    <div class="col-md-4 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="split_users[]" value="{{ m.id }}" id="user{{ m.id }}" checked>
+                                            <label class="form-check-label" for="user{{ m.id }}">
+                                                {{ m.nickname }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('expense.list_expenses') }}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill hover-lift">
+                            <i class="bi bi-x-circle me-1"></i>取消
+                        </a>
+                        <button type="submit" class="btn btn-gradient-success btn-sm px-4 rounded-pill hover-lift">
+                            <i class="bi bi-check-circle-fill me-1"></i>確認送出
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.getElementById('btn-select-all').addEventListener('click', function() {
-    const checkboxes = document.querySelectorAll('.split-user-checkbox');
-    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    checkboxes.forEach(cb => {
-        cb.checked = !allChecked;
-    });
-});
-</script>
 {% endblock %}

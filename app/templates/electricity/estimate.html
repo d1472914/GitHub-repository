@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="glass-card text-center mb-4">
+            <h1 class="display-5 fw-bold text-gradient mb-3">⚡ 即時冷氣電費估算</h1>
+            <p class="text-secondary mb-4">想知道冷氣開一整晚要多少錢？輸入度數馬上算！</p>
+            
+            <div class="mb-4 text-start">
+                <label class="form-label text-secondary">每度電單價 (元)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent text-white border-secondary border-end-0">$</span>
+                    <input type="number" id="unitPrice" class="form-control form-control-glass border-start-0 ps-0" value="5.0" step="0.1">
+                </div>
+            </div>
+
+            <div class="row g-3 text-start mb-4">
+                <div class="col-6">
+                    <label class="form-label text-secondary">昨日度數 / 起始度數</label>
+                    <input type="number" id="startDegree" class="form-control form-control-glass" placeholder="例如: 1000">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-secondary">今日度數 / 結束度數</label>
+                    <input type="number" id="endDegree" class="form-control form-control-glass" placeholder="例如: 1015">
+                </div>
+            </div>
+
+            <div class="p-4 rounded-4" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3);">
+                <div class="text-secondary mb-2">已使用度數</div>
+                <h2 class="display-6 fw-bold mb-4"><span id="usedDegrees">0.0</span> 度</h2>
+                
+                <div class="text-secondary mb-2">預估電費</div>
+                <h1 class="display-3 fw-bold text-warning mb-0">$<span id="estimatedCost" class="number-animate">0</span></h1>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const unitPriceInput = document.getElementById('unitPrice');
+    const startDegreeInput = document.getElementById('startDegree');
+    const endDegreeInput = document.getElementById('endDegree');
+    const usedDegreesSpan = document.getElementById('usedDegrees');
+    const estimatedCostSpan = document.getElementById('estimatedCost');
+
+    function calculateCost() {
+        const price = parseFloat(unitPriceInput.value) || 0;
+        const start = parseFloat(startDegreeInput.value) || 0;
+        const end = parseFloat(endDegreeInput.value) || 0;
+        
+        let used = 0;
+        let cost = 0;
+        
+        if (end >= start && startDegreeInput.value && endDegreeInput.value) {
+            used = end - start;
+            cost = used * price;
+        }
+
+        // 動畫效果
+        usedDegreesSpan.textContent = used.toFixed(1);
+        
+        // 簡單的數字跳動效果
+        let currentCost = parseFloat(estimatedCostSpan.textContent);
+        if (isNaN(currentCost)) currentCost = 0;
+        
+        const steps = 10;
+        const diff = (cost - currentCost) / steps;
+        let stepCount = 0;
+        
+        if (diff !== 0) {
+            const interval = setInterval(() => {
+                currentCost += diff;
+                stepCount++;
+                estimatedCostSpan.textContent = Math.round(currentCost);
+                if (stepCount >= steps) {
+                    clearInterval(interval);
+                    estimatedCostSpan.textContent = Math.round(cost);
+                }
+            }, 20);
+        }
+    }
+
+    unitPriceInput.addEventListener('input', calculateCost);
+    startDegreeInput.addEventListener('input', calculateCost);
+    endDegreeInput.addEventListener('input', calculateCost);
+});
+</script>
+{% endblock %}

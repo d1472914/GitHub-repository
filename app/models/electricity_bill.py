@@ -1,105 +1,75 @@
-from app.models import get_db_connection
+"""
+ElectricityBill Model — 電費帳單
+儲存每期電費帳單的總金額與計費期間
+"""
 
-class ElectricityBill:
-    """ElectricityBill Model — 電費帳單"""
-    def __init__(self, row):
-        self.id = row['id']
-        self.group_id = row['group_id']
-        self.total_amount = row['total_amount']
-        self.total_kwh = row['total_kwh']
-        self.period_start = row['period_start']
-        self.period_end = row['period_end']
-        self.created_by = row['created_by']
-        self.created_at = row['created_at']
+from datetime import datetime
+from app.models import db
 
-    def __getitem__(self, key):
-        return getattr(self, key)
+
+class ElectricityBill(db.Model):
+    __tablename__ = 'electricity_bills'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    total_kwh = db.Column(db.Float, nullable=True)
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # 關聯
+    group = db.relationship('Group', backref='electricity_bills')
+    creator = db.relationship('User', backref='created_bills')
+    readings = db.relationship('MeterReading', backref='bill', lazy='dynamic')
+    splits = db.relationship('ElectricitySplit', backref='bill', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<ElectricityBill {self.period_start} ~ {self.period_end}>'
+
+    # ===== CRUD 方法 =====
 
     @classmethod
-    def create(cls, data):
-        """新增一筆電費帳單記錄"""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO electricity_bills (group_id, total_amount, total_kwh, period_start, period_end, created_by) VALUES (?, ?, ?, ?, ?, ?)",
-                (data.get('group_id'), data.get('total_amount'), data.get('total_kwh'), data.get('period_start'), data.get('period_end'), data.get('created_by'))
-            )
-            conn.commit()
-            new_id = cursor.lastrowid
-            conn.close()
-            return cls.get_by_id(new_id)
-        except Exception as e:
-            print(f"Error creating electricity bill: {e}")
-            return None
+    def create(cls, group_id, total_amount, period_start, period_end, created_by, total_kwh=None):
+        """建立新帳單"""
+        bill = cls(
+            group_id=group_id,
+            total_amount=total_amount,
+            total_kwh=total_kwh,
+            period_start=period_start,
+            period_end=period_end,
+            created_by=created_by
+        )
+        db.session.add(bill)
+        db.session.commit()
+        return bill
 
     @classmethod
     def get_all(cls):
-        """取得所有電費帳單"""
-        try:
-            conn = get_db_connection()
-            rows = conn.execute("SELECT * FROM electricity_bills").fetchall()
-            conn.close()
-            return [cls(row) for row in rows]
-        except Exception as e:
-            print(f"Error getting all electricity bills: {e}")
-            return []
+        """取得所有帳單"""
+        return cls.query.all()
 
     @classmethod
     def get_by_id(cls, bill_id):
-        """依 ID 取得電費帳單"""
-        try:
-            conn = get_db_connection()
-            row = conn.execute("SELECT * FROM electricity_bills WHERE id = ?", (bill_id,)).fetchone()
-            conn.close()
-            return cls(row) if row else None
-        except Exception as e:
-            print(f"Error getting electricity bill by id: {e}")
-            return None
+        """依 ID 取得帳單"""
+        return cls.query.get(bill_id)
 
     @classmethod
     def get_by_group(cls, group_id):
-        """取得特定群組的所有電費帳單，依計費起始日降冪排列"""
-        try:
-            conn = get_db_connection()
-            rows = conn.execute("SELECT * FROM electricity_bills WHERE group_id = ? ORDER BY period_start DESC", (group_id,)).fetchall()
-            conn.close()
-            return [cls(row) for row in rows]
-        except Exception as e:
-            print(f"Error getting bills by group: {e}")
-            return []
+        """取得群組的所有帳單（由新到舊）"""
+        return cls.query.filter_by(group_id=group_id)\
+            .order_by(cls.period_end.desc()).all()
 
-    @classmethod
-    def update(cls, bill_id, data):
-        """更新電費帳單"""
-        try:
-            conn = get_db_connection()
-            fields = []
-            values = []
-            for key, val in data.items():
-                fields.append(f"{key} = ?")
-                values.append(val)
-            values.append(bill_id)
-            query = f"UPDATE electricity_bills SET {', '.join(fields)} WHERE id = ?"
-            conn.execute(query, tuple(values))
-            conn.commit()
-            conn.close()
-            return cls.get_by_id(bill_id)
-        except Exception as e:
-            print(f"Error updating electricity bill: {e}")
-            return None
+    def update(self, **kwargs):
+        """更新帳單"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        db.session.commit()
+        return self
 
-    @classmethod
-    def delete(cls, bill_id):
-        """刪除電費帳單 (同時刪除對應的度數登錄與分攤結果)"""
-        try:
-            conn = get_db_connection()
-            conn.execute("DELETE FROM electricity_splits WHERE bill_id = ?", (bill_id,))
-            conn.execute("DELETE FROM meter_readings WHERE bill_id = ?", (bill_id,))
-            conn.execute("DELETE FROM electricity_bills WHERE id = ?", (bill_id,))
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            print(f"Error deleting electricity bill: {e}")
-            return False
+    def delete(self):
+        """刪除帳單"""
+        db.session.delete(self)
+        db.session.commit()

@@ -1,110 +1,75 @@
-from app.models import get_db_connection
+"""
+MeterReading Model — 電表度數
+記錄每期帳單中，各室友的電表起始與結束度數
+"""
 
-class MeterReading:
-    """MeterReading Model — 電表度數"""
-    def __init__(self, row):
-        self.id = row['id']
-        self.bill_id = row['bill_id']
-        self.user_id = row['user_id']
-        self.start_reading = row['start_reading']
-        self.end_reading = row['end_reading']
-        self.personal_kwh = row['personal_kwh']
+from app.models import db
 
-    def __getitem__(self, key):
-        return getattr(self, key)
+
+class MeterReading(db.Model):
+    __tablename__ = 'meter_readings'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    bill_id = db.Column(db.Integer, db.ForeignKey('electricity_bills.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    start_reading = db.Column(db.Float, nullable=False)
+    end_reading = db.Column(db.Float, nullable=False)
+    personal_kwh = db.Column(db.Float, nullable=False)
+
+    # 唯一約束：每人每期只能登錄一次
+    __table_args__ = (
+        db.UniqueConstraint('bill_id', 'user_id', name='uq_bill_user_reading'),
+    )
+
+    # 關聯
+    user = db.relationship('User', backref='meter_readings')
+
+    def __repr__(self):
+        return f'<MeterReading bill={self.bill_id} user={self.user_id} {self.personal_kwh}kWh>'
+
+    # ===== CRUD 方法 =====
 
     @classmethod
-    def create(cls, data):
-        """登錄電表度數，自動計算 personal_kwh = end - start"""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            personal_kwh = float(data.get('end_reading')) - float(data.get('start_reading'))
-            cursor.execute(
-                "INSERT INTO meter_readings (bill_id, user_id, start_reading, end_reading, personal_kwh) VALUES (?, ?, ?, ?, ?)",
-                (data.get('bill_id'), data.get('user_id'), data.get('start_reading'), data.get('end_reading'), personal_kwh)
-            )
-            conn.commit()
-            new_id = cursor.lastrowid
-            conn.close()
-            return cls.get_by_id(new_id)
-        except Exception as e:
-            print(f"Error creating meter reading: {e}")
-            return None
+    def create(cls, bill_id, user_id, start_reading, end_reading):
+        """建立電表度數記錄（自動計算 personal_kwh）"""
+        reading = cls(
+            bill_id=bill_id,
+            user_id=user_id,
+            start_reading=start_reading,
+            end_reading=end_reading,
+            personal_kwh=end_reading - start_reading
+        )
+        db.session.add(reading)
+        db.session.commit()
+        return reading
 
     @classmethod
     def get_all(cls):
-        """取得所有度數記錄"""
-        try:
-            conn = get_db_connection()
-            rows = conn.execute("SELECT * FROM meter_readings").fetchall()
-            conn.close()
-            return [cls(row) for row in rows]
-        except Exception as e:
-            print(f"Error getting all meter readings: {e}")
-            return []
+        """取得所有電表度數"""
+        return cls.query.all()
 
     @classmethod
     def get_by_id(cls, reading_id):
-        """依 ID 取得度數記錄"""
-        try:
-            conn = get_db_connection()
-            row = conn.execute("SELECT * FROM meter_readings WHERE id = ?", (reading_id,)).fetchone()
-            conn.close()
-            return cls(row) if row else None
-        except Exception as e:
-            print(f"Error getting meter reading by id: {e}")
-            return None
+        """依 ID 取得電表度數"""
+        return cls.query.get(reading_id)
 
     @classmethod
     def get_by_bill(cls, bill_id):
-        """取得特定帳單的所有電表度數記錄"""
-        try:
-            conn = get_db_connection()
-            rows = conn.execute("SELECT * FROM meter_readings WHERE bill_id = ?", (bill_id,)).fetchall()
-            conn.close()
-            return [cls(row) for row in rows]
-        except Exception as e:
-            print(f"Error getting readings by bill: {e}")
-            return []
+        """取得某期帳單的所有電表度數"""
+        return cls.query.filter_by(bill_id=bill_id).all()
 
-    @classmethod
-    def update(cls, reading_id, data):
+    def update(self, **kwargs):
         """更新電表度數"""
-        try:
-            conn = get_db_connection()
-            fields = []
-            values = []
-            for key, val in data.items():
-                fields.append(f"{key} = ?")
-                values.append(val)
-            
-            if 'start_reading' in data or 'end_reading' in data:
-                current = cls.get_by_id(reading_id)
-                start = float(data.get('start_reading', current.start_reading))
-                end = float(data.get('end_reading', current.end_reading))
-                fields.append("personal_kwh = ?")
-                values.append(end - start)
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        # 重新計算個人用電
+        if 'start_reading' in kwargs or 'end_reading' in kwargs:
+            self.personal_kwh = self.end_reading - self.start_reading
+        db.session.commit()
+        return self
 
-            values.append(reading_id)
-            query = f"UPDATE meter_readings SET {', '.join(fields)} WHERE id = ?"
-            conn.execute(query, tuple(values))
-            conn.commit()
-            conn.close()
-            return cls.get_by_id(reading_id)
-        except Exception as e:
-            print(f"Error updating meter reading: {e}")
-            return None
-
-    @classmethod
-    def delete(cls, reading_id):
-        """刪除度數記錄"""
-        try:
-            conn = get_db_connection()
-            conn.execute("DELETE FROM meter_readings WHERE id = ?", (reading_id,))
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            print(f"Error deleting meter reading: {e}")
-            return False
+    def delete(self):
+        """刪除電表度數"""
+        db.session.delete(self)
+        db.session.commit()

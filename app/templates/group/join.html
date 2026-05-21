@@ -1,29 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}加入群組 - RoomieCo{% endblock %}
+{% block title %}加入室友群組 - 室友共好{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card main-card p-4 my-4">
-            <div class="text-center mb-4">
-                <i class="bi bi-door-open text-success" style="font-size: 3rem;"></i>
-                <h3 class="font-weight-bold mt-2">加入室友的群組</h3>
-                <p class="text-muted">請輸入室友分享給您的 6 碼群組邀請碼</p>
+<div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="col-md-6">
+        <div class="card card-custom border-0 shadow-lg">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="display-5 text-primary mb-3"><i class="bi bi-key-fill"></i></div>
+                    <h2 class="fw-bold mb-1">輸入邀請碼加入群組</h2>
+                    <p class="text-muted">輸入室友提供給您的 6 位數邀請碼以同步生活資料</p>
+                </div>
+                <form action="{{ url_for('group.join') }}" method="POST">
+                    <div class="mb-4">
+                        <label for="invite_code" class="form-label font-monospace small text-muted">群組邀請碼 (Invite Code)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-hash"></i></span>
+                            <input type="text" class="form-control bg-light border-0 text-center font-monospace fw-bold fs-4 text-uppercase" id="invite_code" name="invite_code" maxlength="10" placeholder="請輸入邀請碼" required autocomplete="off">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient-primary w-100 py-2.5 rounded-3 mb-3">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>加入群組
+                    </button>
+                    <div class="text-center">
+                        <span class="text-muted small">想成為發起人嗎？</span>
+                        <a href="{{ url_for('group.create') }}" class="text-decoration-none small fw-semibold text-primary">建立新群組</a>
+                    </div>
+                </form>
             </div>
-            
-            <form action="{{ url_for('group.join_group') }}" method="POST">
-                <div class="mb-4">
-                    <label for="invite_code" class="form-label font-weight-bold">邀請碼 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control text-center fs-3 font-weight-bold text-uppercase" id="invite_code" name="invite_code" value="{{ invite_code if invite_code else '' }}" placeholder="ABC123" maxlength="6" required autofocus style="border-radius: 8px; letter-spacing: 4px; padding: 10px 14px;">
-                    <div class="form-text text-muted text-center">英文不分大小寫，共 6 碼。</div>
-                </div>
-                
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('group.group_home') }}" class="btn btn-light w-50" style="border-radius: 10px; font-weight: 600;">返回</a>
-                    <button type="submit" class="btn btn-gradient-secondary w-50">確認加入</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

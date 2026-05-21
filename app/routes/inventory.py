@@ -1,281 +1,282 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from app.utils.auth_helpers import group_required
-from app.models.inventory_item import InventoryItem
-from app.models.inventory_log import InventoryLog
-from app.models.expense import Expense
-from app.models.expense_split import ExpenseSplit
-from app.models.user import User
-from app.models.notification import Notification
+from app.models import inventory as inv_model
+from app.models import user as user_model
+from app.models import expense as expense_model
+from app.models import notification as noti_model
 
 inventory_bp = Blueprint('inventory', __name__)
 
-@inventory_bp.route('/')
+@inventory_bp.route('/inventory', methods=['GET'])
 @login_required
 @group_required
 def list_items():
-    """物資庫存列表"""
-    items = InventoryItem.get_by_group(current_user.group_id)
-    return render_template('inventory/list.html', items=items)
+    try:
+        items = inv_model.get_by_group(current_user.group_id)
+        return render_template('inventory/list.html', items=items)
+    except Exception as e:
+        flash(f"無法載入物資清單：{e}", "danger")
+        return render_template('inventory/list.html', items=[])
 
-@inventory_bp.route('/new', methods=['GET', 'POST'])
+@inventory_bp.route('/inventory/new', methods=['GET'])
+@login_required
+@group_required
+def new_item():
+    return render_template('inventory/form.html', item=None)
+
+@inventory_bp.route('/inventory', methods=['POST'])
 @login_required
 @group_required
 def create_item():
-    """新增物資品項"""
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        unit = request.form.get('unit', '').strip()
-        quantity_str = request.form.get('quantity', '0').strip()
-        min_quantity_str = request.form.get('min_quantity', '0').strip()
-        
-        if not name or not unit or not quantity_str or not min_quantity_str:
-            flash('所有欄位皆為必填！', 'warning')
-            return render_template('inventory/form.html', name=name, unit=unit, quantity=quantity_str, min_quantity=min_quantity_str, action_type='new')
-            
-        try:
-            quantity = int(quantity_str)
-            min_quantity = int(min_quantity_str)
-            if quantity < 0 or min_quantity < 0:
-                raise ValueError()
-        except ValueError:
-            flash('數量與最低庫存量必須為非負整數！', 'warning')
-            return render_template('inventory/form.html', name=name, unit=unit, quantity=quantity_str, min_quantity=min_quantity_str, action_type='new')
-            
-        item_data = {
+    name = request.form.get('name', '').strip()
+    unit = request.form.get('unit', '').strip()
+    quantity_str = request.form.get('quantity', '0').strip()
+    min_quantity_str = request.form.get('min_quantity', '0').strip()
+
+    if not name or not unit:
+        flash("物資名稱與單位為必填！", "danger")
+        return render_template('inventory/form.html', item=None)
+
+    try:
+        quantity = int(quantity_str)
+        min_quantity = int(min_quantity_str)
+        if quantity < 0 or min_quantity < 0:
+            raise ValueError
+    except ValueError:
+        flash("庫存數量與最低庫存量必須是正整數！", "danger")
+        return render_template('inventory/form.html', item=None)
+
+    try:
+        item_id = inv_model.create({
             'group_id': current_user.group_id,
             'name': name,
             'unit': unit,
             'quantity': quantity,
             'min_quantity': min_quantity,
             'created_by': current_user.id
-        }
-        
-        new_item = InventoryItem.create(item_data)
-        if new_item:
-            # 建立初始入庫日誌
-            if quantity > 0:
-                InventoryLog.create({
-                    'item_id': new_item.id,
-                    'user_id': current_user.id,
-                    'action': 'in',
-                    'quantity': quantity,
-                    'note': '初始建立入庫'
-                })
-            flash(f'成功新增物資「{name}」！', 'success')
-            return redirect(url_for('inventory.list_items'))
-        else:
-            flash('新增物資失敗，請重試。', 'danger')
-            
-    return render_template('inventory/form.html', action_type='new')
-
-@inventory_bp.route('/<int:item_id>')
-@login_required
-@group_required
-def detail(item_id):
-    """物資詳情與異動日誌"""
-    item = InventoryItem.get_by_id(item_id)
-    if not item or item.group_id != current_user.group_id:
-        flash('找不到該物資品項！', 'danger')
-        return redirect(url_for('inventory.list_items'))
-        
-    logs = InventoryLog.get_by_item(item_id)
-    return render_template('inventory/detail.html', item=item, logs=logs)
-
-@inventory_bp.route('/<int:item_id>/stock-in', methods=['POST'])
-@login_required
-@group_required
-def stock_in(item_id):
-    """物資入庫 (增加庫存)"""
-    item = InventoryItem.get_by_id(item_id)
-    if not item or item.group_id != current_user.group_id:
-        flash('找不到該物資品項！', 'danger')
-        return redirect(url_for('inventory.list_items'))
-        
-    qty_str = request.form.get('quantity', '').strip()
-    note = request.form.get('note', '').strip()
-    sync_expense = request.form.get('sync_expense') == '1'
-    expense_amount_str = request.form.get('expense_amount', '').strip()
-    
-    if not qty_str:
-        flash('請輸入入庫數量！', 'warning')
-        return redirect(url_for('inventory.detail', item_id=item_id))
-        
-    try:
-        qty = int(qty_str)
-        if qty <= 0:
-            raise ValueError()
-    except ValueError:
-        flash('入庫數量必須是正整數！', 'warning')
-        return redirect(url_for('inventory.detail', item_id=item_id))
-        
-    if item.stock_in(qty):
-        # 建立入庫日誌
-        InventoryLog.create({
-            'item_id': item_id,
-            'user_id': current_user.id,
-            'action': 'in',
-            'quantity': qty,
-            'note': note or '一般入庫'
         })
-        
-        # 同步記帳整合 (將物資採購費用記在開支帳本，並均攤給全體室友)
-        if sync_expense and expense_amount_str:
-            try:
-                expense_amount = float(expense_amount_str)
-                if expense_amount > 0:
-                    # 建立 Expense
-                    new_exp = Expense.create({
-                        'group_id': current_user.group_id,
-                        'title': f'物資採購：{item.name} x {qty} {item.unit}',
-                        'amount': expense_amount,
-                        'category': '雜物',
-                        'paid_by': current_user.id
-                    })
-                    
-                    if new_exp:
-                        members = User.get_by_group(current_user.group_id)
-                        split_amount = round(expense_amount / len(members), 2)
-                        for m in members:
-                            is_settled = 1 if (m.id == current_user.id and len(members) == 1) else 0
-                            ExpenseSplit.create({
-                                'expense_id': new_exp.id,
-                                'user_id': m.id,
-                                'amount': split_amount,
-                                'is_settled': is_settled
-                            })
-                            
-                            if m.id != current_user.id:
-                                Notification.create({
-                                    'user_id': m.id,
-                                    'group_id': current_user.group_id,
-                                    'type': 'expense',
-                                    'title': '物資採購記帳通知',
-                                    'message': f'室友 {current_user.nickname} 採購了公用物資 {item.name} 並同步記帳 ${expense_amount}，您需分攤 ${split_amount}。'
-                                })
-                        flash('入庫登記成功，且採購金額已同步至開支帳本！', 'success')
-            except ValueError:
-                flash('同步記帳失敗：請輸入正確的金額。但入庫已成功登記。', 'warning')
-        else:
-            flash(f'物資「{item.name}」已成功入庫 {qty} {item.unit}！', 'success')
-    else:
-        flash('入庫登記失敗，請重試。', 'danger')
-        
-    return redirect(url_for('inventory.detail', item_id=item_id))
 
-@inventory_bp.route('/<int:item_id>/stock-out', methods=['POST'])
+        # 寫入初始入庫日誌
+        if quantity > 0:
+            inv_model.create_log({
+                'item_id': item_id,
+                'user_id': current_user.id,
+                'action': 'stock_in',
+                'quantity': quantity,
+                'note': '初始入庫'
+            })
+
+        flash("物資品項建立成功！", "success")
+        return redirect(url_for('inventory.list_items'))
+    except Exception as e:
+        flash(f"建立物資品項失敗：{e}", "danger")
+        return render_template('inventory/form.html', item=None)
+
+@inventory_bp.route('/inventory/<int:id>', methods=['GET'])
 @login_required
 @group_required
-def stock_out(item_id):
-    """物資出庫 (消耗庫存)"""
-    item = InventoryItem.get_by_id(item_id)
-    if not item or item.group_id != current_user.group_id:
-        flash('找不到該物資品項！', 'danger')
-        return redirect(url_for('inventory.list_items'))
-        
-    qty_str = request.form.get('quantity', '').strip()
-    note = request.form.get('note', '').strip()
-    
-    if not qty_str:
-        flash('請輸入消耗數量！', 'warning')
-        return redirect(url_for('inventory.detail', item_id=item_id))
-        
+def detail_item(id):
+    item = inv_model.get_by_id(id)
+    if not item or item['group_id'] != current_user.group_id:
+        abort(404)
+
     try:
-        qty = int(qty_str)
-        if qty <= 0:
-            raise ValueError()
-        if qty > item.quantity:
-            flash(f'庫存不足！目前庫存僅剩 {item.quantity} {item.unit}。', 'warning')
-            return redirect(url_for('inventory.detail', item_id=item_id))
-    except ValueError:
-        flash('消耗數量必須是正整數！', 'warning')
-        return redirect(url_for('inventory.detail', item_id=item_id))
+        logs = inv_model.get_logs_by_item(id)
+        roommates = user_model.get_users_by_group(current_user.group_id)
+        user_map = {r['id']: r['nickname'] for r in roommates}
         
-    if item.stock_out(qty):
-        # 建立出庫日誌
-        InventoryLog.create({
-            'item_id': item_id,
-            'user_id': current_user.id,
-            'action': 'out',
-            'quantity': qty,
-            'note': note or '一般消耗'
-        })
-        
-        # 檢查低庫存提醒
-        if item.is_low_stock:
-            # 發送低庫存通知給全體室友
-            members = User.get_by_group(current_user.group_id)
-            for m in members:
-                Notification.create({
-                    'user_id': m.id,
-                    'group_id': current_user.group_id,
-                    'type': 'inventory',
-                    'title': '公用物資低庫存提醒 🚨',
-                    'message': f'警告：物資「{item.name}」目前庫存已降至 {item.quantity} {item.unit}，低於最低設定量 {item.min_quantity} {item.unit}，請室友抽空補貨。'
-                })
-            flash(f'已消耗 {qty} {item.unit}。目前庫存已低於警戒線，已通知室友補貨！', 'warning')
-        else:
-            flash(f'已消耗 {qty} {item.unit}。目前剩餘庫存：{item.quantity} {item.unit}。', 'success')
-    else:
-        flash('出庫登記失敗，請重試。', 'danger')
-        
-    return redirect(url_for('inventory.detail', item_id=item_id))
+        log_displays = []
+        for lg in logs:
+            log_displays.append({
+                'id': lg['id'],
+                'nickname': user_map.get(lg['user_id'], '未知'),
+                'action': lg['action'],
+                'quantity': lg['quantity'],
+                'note': lg['note'],
+                'created_at': lg['created_at']
+            })
+            
+        return render_template('inventory/detail.html', item=item, logs=log_displays)
+    except Exception as e:
+        flash(f"無法載入物資詳情：{e}", "danger")
+        return redirect(url_for('inventory.list_items'))
 
-@inventory_bp.route('/<int:item_id>/edit', methods=['GET', 'POST'])
+@inventory_bp.route('/inventory/<int:id>/edit', methods=['GET'])
 @login_required
 @group_required
-def edit_item(item_id):
-    """編輯物資品項屬性"""
-    item = InventoryItem.get_by_id(item_id)
-    if not item or item.group_id != current_user.group_id:
-        flash('找不到該物資品項！', 'danger')
-        return redirect(url_for('inventory.list_items'))
-        
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        unit = request.form.get('unit', '').strip()
-        min_quantity_str = request.form.get('min_quantity', '').strip()
-        
-        if not name or not unit or not min_quantity_str:
-            flash('所有欄位皆為必填！', 'warning')
-            return render_template('inventory/form.html', item=item, action_type='edit')
-            
-        try:
-            min_quantity = int(min_quantity_str)
-            if min_quantity < 0:
-                raise ValueError()
-        except ValueError:
-            flash('最低庫存量必須是非負整數！', 'warning')
-            return render_template('inventory/form.html', item=item, action_type='edit')
-            
-        InventoryItem.update(item_id, {
+def edit_item(id):
+    item = inv_model.get_by_id(id)
+    if not item or item['group_id'] != current_user.group_id:
+        abort(404)
+    return render_template('inventory/form.html', item=item)
+
+@inventory_bp.route('/inventory/<int:id>/update', methods=['POST'])
+@login_required
+@group_required
+def update_item(id):
+    item = inv_model.get_by_id(id)
+    if not item or item['group_id'] != current_user.group_id:
+        abort(404)
+
+    name = request.form.get('name', '').strip()
+    unit = request.form.get('unit', '').strip()
+    min_quantity_str = request.form.get('min_quantity', '0').strip()
+
+    if not name or not unit:
+        flash("物資名稱與單位為必填！", "danger")
+        return render_template('inventory/form.html', item=item)
+
+    try:
+        min_quantity = int(min_quantity_str)
+        if min_quantity < 0:
+            raise ValueError
+    except ValueError:
+        flash("最低庫存量必須是正整數！", "danger")
+        return render_template('inventory/form.html', item=item)
+
+    try:
+        inv_model.update(id, {
             'name': name,
             'unit': unit,
             'min_quantity': min_quantity
         })
-        
-        flash('物資資訊已更新！', 'success')
-        return redirect(url_for('inventory.detail', item_id=item_id))
-        
-    return render_template('inventory/form.html', item=item, action_type='edit')
+        flash("物資品項修改成功！", "success")
+        return redirect(url_for('inventory.detail_item', id=id))
+    except Exception as e:
+        flash(f"修改失敗，資料庫錯誤：{e}", "danger")
+        return render_template('inventory/form.html', item=item)
 
-@inventory_bp.route('/<int:item_id>/delete', methods=['POST'])
+@inventory_bp.route('/inventory/<int:id>/stock-in', methods=['POST'])
 @login_required
 @group_required
-def delete_item(item_id):
-    """刪除物資"""
-    item = InventoryItem.get_by_id(item_id)
-    if not item or item.group_id != current_user.group_id:
-        flash('找不到該物資品項！', 'danger')
-        return redirect(url_for('inventory.list_items'))
-        
-    if item.created_by != current_user.id and current_user.role != 'admin':
-        flash('只有物資建立者或群組管理員才能刪除此項目！', 'danger')
-        return redirect(url_for('inventory.detail', item_id=item_id))
-        
-    if InventoryItem.delete(item_id):
-        flash('物資品項已成功刪除！', 'info')
-    else:
-        flash('刪除物資失敗，請重試。', 'danger')
-        
-    return redirect(url_for('inventory.list_items'))
+def stock_in(id):
+    item = inv_model.get_by_id(id)
+    if not item or item['group_id'] != current_user.group_id:
+        abort(404)
+
+    qty_str = request.form.get('quantity', '').strip()
+    note = request.form.get('note', '').strip()
+    sync_expense = request.form.get('sync_expense') == '1'
+    amount_str = request.form.get('amount', '0').strip()
+
+    if not qty_str:
+        flash("請輸入入庫數量！", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))
+
+    try:
+        qty = int(qty_str)
+        if qty <= 0:
+            raise ValueError
+    except ValueError:
+        flash("入庫數量必須大於 0！", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))
+
+    amount = 0.0
+    if sync_expense:
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("若同步至帳本，請輸入有效的購買金額！", "danger")
+            return redirect(url_for('inventory.detail_item', id=id))
+
+    try:
+        # 更新庫存
+        new_qty = item['quantity'] + qty
+        inv_model.update(id, {'quantity': new_qty})
+
+        # 新增操作日誌
+        inv_model.create_log({
+            'item_id': id,
+            'user_id': current_user.id,
+            'action': 'stock_in',
+            'quantity': qty,
+            'note': note or '入庫登記'
+        })
+
+        # 同步記帳
+        if sync_expense:
+            roommates = user_model.get_users_by_group(current_user.group_id)
+            expense_id = expense_model.create({
+                'group_id': current_user.group_id,
+                'title': f"購買物資：{item['name']} x{qty} {item['unit']}",
+                'amount': amount,
+                'category': '日用品',
+                'paid_by': current_user.id
+            })
+            
+            # 均分給所有室友
+            split_amount = amount / len(roommates)
+            for r in roommates:
+                expense_model.create_split({
+                    'expense_id': expense_id,
+                    'user_id': r['id'],
+                    'amount': split_amount,
+                    'is_settled': 0
+                })
+
+        flash("入庫登記成功！" + ("已同步建立共同開支帳目。" if sync_expense else ""), "success")
+        return redirect(url_for('inventory.detail_item', id=id))
+    except Exception as e:
+        flash(f"入庫失敗，資料庫錯誤：{e}", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))
+
+@inventory_bp.route('/inventory/<int:id>/stock-out', methods=['POST'])
+@login_required
+@group_required
+def stock_out(id):
+    item = inv_model.get_by_id(id)
+    if not item or item['group_id'] != current_user.group_id:
+        abort(404)
+
+    qty_str = request.form.get('quantity', '').strip()
+    note = request.form.get('note', '').strip()
+
+    if not qty_str:
+        flash("請輸入消耗數量！", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))
+
+    try:
+        qty = int(qty_str)
+        if qty <= 0:
+            raise ValueError
+        if qty > item['quantity']:
+            raise ValueError("庫存不足！")
+    except ValueError as e:
+        flash(f"消耗數量無效：{str(e) or '必須是大於 0 的正整數'}", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))
+
+    try:
+        # 更新庫存
+        new_qty = item['quantity'] - qty
+        inv_model.update(id, {'quantity': new_qty})
+
+        # 新增操作日誌
+        inv_model.create_log({
+            'item_id': id,
+            'user_id': current_user.id,
+            'action': 'stock_out',
+            'quantity': qty,
+            'note': note or '消耗登記'
+        })
+
+        # 低庫存警報
+        if new_qty <= item['min_quantity']:
+            roommates = user_model.get_users_by_group(current_user.group_id)
+            for r in roommates:
+                noti_model.create({
+                    'user_id': r['id'],
+                    'group_id': current_user.group_id,
+                    'type': 'inventory',
+                    'title': f'物資庫存不足警告：{item["name"]}',
+                    'message': f'物資「{item["name"]}」目前庫存僅剩 {new_qty} {item["unit"]}，已低於設定的最低庫存 {item["min_quantity"]} {item["unit"]}，請儘速採購！',
+                    'is_read': 0
+                })
+
+        flash("消耗登記成功！" + ("警告：庫存已低於最低門檻，已通知所有成員！" if new_qty <= item['min_quantity'] else ""), "success")
+        return redirect(url_for('inventory.detail_item', id=id))
+    except Exception as e:
+        flash(f"消耗登記失敗，資料庫錯誤：{e}", "danger")
+        return redirect(url_for('inventory.detail_item', id=id))

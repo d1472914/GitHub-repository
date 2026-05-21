@@ -1,77 +1,79 @@
 {% extends "base.html" %}
 
 {% block title %}
-    {% if action_type == 'new' %}新增物資{% else %}編輯物資規格：{{ item.name }}{% endif %} - RoomieCo
+    {% if item %}編輯物資品項 - {{ item.name }}{% else %}新增物資品項{% endif %} - 室友共好
 {% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('inventory.list_items') }}" class="text-decoration-none text-secondary">物資庫存</a></li>
-                <li class="breadcrumb-item active" aria-current="page">
-                    {% if action_type == 'new' %}新增物資{% else %}編輯物資規格{% endif %}
-                </li>
-            </ol>
-        </nav>
-    </div>
-</div>
-
 <div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="card main-card p-4">
-            <h3 class="font-weight-bold text-dark mb-4">
-                {% if action_type == 'new' %}
-                    <i class="bi bi-plus-circle text-primary me-2"></i>新增物資品項
+    <div class="col-lg-6 col-md-8 col-12">
+        <div class="card card-custom border-0 mb-4">
+            <div class="card-header card-header-custom">
+                <h4 class="mb-0 fw-bold text-dark font-outfit">
+                    <i class="bi {% if item %}bi-pencil-square text-primary{% else %}bi-plus-circle text-success{% endif %} me-2"></i>
+                    {% if item %}編輯物資品項{% else %}新增物資品項{% endif %}
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                {% if item %}
+                <form action="{{ url_for('inventory.update_item', id=item.id) }}" method="POST">
                 {% else %}
-                    <i class="bi bi-pencil-square text-primary me-2"></i>修改物資規格
+                <form action="{{ url_for('inventory.create_item') }}" method="POST">
                 {% endif %}
-            </h3>
-            
-            {% set form_url = url_for('inventory.create_item') if action_type == 'new' else url_for('inventory.edit_item', item_id=item.id) %}
-            
-            <form action="{{ form_url }}" method="POST">
-                <div class="mb-3">
-                    <label for="name" class="form-label font-weight-bold">物資名稱 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="name" name="name" 
-                           value="{{ name if name else (item.name if item else '') }}" 
-                           placeholder="例如：衛生紙、洗碗精、大黑色垃圾袋" required style="border-radius: 8px;">
-                </div>
-                
-                <div class="mb-3">
-                    <label for="unit" class="form-label font-weight-bold">計量單位 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="unit" name="unit" 
-                           value="{{ unit if unit else (item.unit if item else '') }}" 
-                           placeholder="例如：包、瓶、箱、個" required style="border-radius: 8px;">
-                </div>
-                
-                {% if action_type == 'new' %}
+                    
+                    <!-- 物資名稱 -->
                     <div class="mb-3">
-                        <label for="quantity" class="form-label font-weight-bold">初始庫存量 <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" 
-                               value="{{ quantity if quantity is not none else '0' }}" min="0" required style="border-radius: 8px;">
-                        <div class="form-text text-muted">目前已有的公用數量。</div>
+                        <label for="name" class="form-label fw-semibold">物資名稱 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-style form-control" id="name" name="name" 
+                               placeholder="例如：衛生紙、洗碗精、垃圾袋" 
+                               value="{% if item %}{{ item.name }}{% endif %}" required>
                     </div>
-                {% endif %}
-                
-                <div class="mb-4">
-                    <label for="min_quantity" class="form-label font-weight-bold">最低安全存量 (告警界線) <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="min_quantity" name="min_quantity" 
-                           value="{{ min_quantity if min_quantity is not none else (item.min_quantity if item else '0') }}" min="0" required style="border-radius: 8px;">
-                    <div class="form-text text-muted">當庫存量低於或等於此數值時，系統會在首頁發出警報並通知全體室友補貨。</div>
-                </div>
-                
-                <div class="d-flex gap-2">
-                    <a href="{% if action_type == 'new' %}{{ url_for('inventory.list_items') }}{% else %}{{ url_for('inventory.detail', item_id=item.id) }}{% endif %}" 
-                       class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
-                        取消
-                    </a>
-                    <button type="submit" class="btn btn-gradient-primary w-75">
-                        確認送出
-                    </button>
-                </div>
-            </form>
+
+                    <!-- 單位 -->
+                    <div class="mb-3">
+                        <label for="unit" class="form-label fw-semibold">測量單位 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-style form-control" id="unit" name="unit" 
+                               placeholder="例如：包、瓶、個、箱" 
+                               value="{% if item %}{{ item.unit }}{% endif %}" required>
+                        <div class="form-text">用於顯示數量的單位。</div>
+                    </div>
+
+                    <!-- 初始庫存數量（僅在新增時顯示） -->
+                    {% if not item %}
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label fw-semibold">初始庫存數量</label>
+                        <input type="number" class="form-style form-control" id="quantity" name="quantity" 
+                               min="0" placeholder="0" value="0">
+                        <div class="form-text">建立品項時的目前現有數量。</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 最低存量門檻 -->
+                    <div class="mb-4">
+                        <label for="min_quantity" class="form-label fw-semibold">最低庫存量（安全門檻）</label>
+                        <input type="number" class="form-style form-control" id="min_quantity" name="min_quantity" 
+                               min="0" placeholder="2" value="{% if item %}{{ item.min_quantity }}{% else %}1{% endif %}">
+                        <div class="form-text text-muted">當庫存數量低於或等於此數值時，系統將會向所有室友發出採購通知。</div>
+                    </div>
+
+                    <!-- 按鈕列 -->
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                        {% if item %}
+                        <a href="{{ url_for('inventory.detail_item', id=item.id) }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
+                            <i class="bi bi-x-lg me-1"></i>取消
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('inventory.list_items') }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
+                            <i class="bi bi-arrow-left me-1"></i>返回列表
+                        </a>
+                        {% endif %}
+                        
+                        <button type="submit" class="btn btn-gradient-primary rounded-pill px-4 hover-lift">
+                            <i class="bi bi-check-lg me-1"></i>儲存變更
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

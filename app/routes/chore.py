@@ -1,199 +1,208 @@
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from app.utils.auth_helpers import group_required
-from app.models.chore import Chore
-from app.models.user import User
-from app.models.notification import Notification
+from app.models import chore as chore_model
+from app.models import user as user_model
+from app.models import notification as noti_model
 
 chore_bp = Blueprint('chore', __name__)
 
-@chore_bp.route('/')
+@chore_bp.route('/chores', methods=['GET'])
 @login_required
 @group_required
 def list_chores():
-    """家事任務列表"""
-    chores = Chore.get_by_group(current_user.group_id)
-    members = User.get_by_group(current_user.group_id)
-    members_dict = {m.id: m for m in members}
-    
-    chores_data = []
-    for c in chores:
-        assignee = members_dict.get(c.assigned_to)
-        creator = members_dict.get(c.created_by)
+    try:
+        chores = chore_model.get_by_group(current_user.group_id)
+        roommates = user_model.get_users_by_group(current_user.group_id)
+        user_map = {r['id']: r['nickname'] for r in roommates}
         
-        # 轉換 due_date 方便前端顯示
-        due_date_obj = datetime.strptime(c.due_date, '%Y-%m-%d') if isinstance(c.due_date, str) else c.due_date
-        
-        # 判斷是否逾期
-        is_overdue = (c.status == 'pending' and due_date_obj.date() < datetime.now().date())
-        
-        chores_data.append({
-            'info': c,
-            'assignee_name': assignee.nickname if assignee else '未指派',
-            'creator_name': creator.nickname if creator else '系統',
-            'is_overdue': is_overdue
-        })
-        
-    return render_template('chore/list.html', chores=chores_data)
+        chore_displays = []
+        for c in chores:
+            chore_displays.append({
+                'id': c['id'],
+                'title': c['title'],
+                'description': c['description'],
+                'recurrence': c['recurrence'],
+                'due_date': c['due_date'],
+                'assigned_to_id': c['assigned_to'],
+                'assigned_to_name': user_map.get(c['assigned_to'], '未知'),
+                'status': c['status'],
+                'created_by_name': user_map.get(c['created_by'], '未知'),
+                'completed_at': c['completed_at']
+            })
+            
+        return render_template('chore/list.html', chores=chore_displays)
+    except Exception as e:
+        flash(f"無法載入任務列表：{e}", "danger")
+        return render_template('chore/list.html', chores=[])
 
-@chore_bp.route('/new', methods=['GET', 'POST'])
+@chore_bp.route('/chores/calendar', methods=['GET'])
+@login_required
+@group_required
+def calendar():
+    try:
+        chores = chore_model.get_by_group(current_user.group_id)
+        roommates = user_model.get_users_by_group(current_user.group_id)
+        user_map = {r['id']: r['nickname'] for r in roommates}
+        
+        chore_displays = []
+        for c in chores:
+            chore_displays.append({
+                'id': c['id'],
+                'title': c['title'],
+                'due_date': c['due_date'],
+                'assigned_to_name': user_map.get(c['assigned_to'], '未知'),
+                'status': c['status']
+            })
+            
+        return render_template('chore/calendar.html', chores=chore_displays)
+    except Exception as e:
+        flash(f"無法載入日曆：{e}", "danger")
+        return render_template('chore/calendar.html', chores=[])
+
+@chore_bp.route('/chores/new', methods=['GET'])
+@login_required
+@group_required
+def new_chore():
+    try:
+        roommates = user_model.get_users_by_group(current_user.group_id)
+        return render_template('chore/form.html', chore=None, members=roommates)
+    except Exception as e:
+        flash(f"無法載入成員名單：{e}", "danger")
+        return redirect(url_for('chore.list_chores'))
+
+@chore_bp.route('/chores', methods=['POST'])
 @login_required
 @group_required
 def create_chore():
-    """建立家事任務"""
-    members = User.get_by_group(current_user.group_id)
-    
-    if request.method == 'POST':
-        title = request.form.get('title', '').strip()
-        description = request.form.get('description', '').strip()
-        recurrence = request.form.get('recurrence', 'once').strip()
-        due_date = request.form.get('due_date', '').strip()
-        assigned_to_id = request.form.get('assigned_to', type=int)
-        
-        if not title or not due_date or not assigned_to_id:
-            flash('請填寫任務標題、到期日與指派對象！', 'warning')
-            return render_template('chore/form.html', members=members, title=title, description=description, due_date=due_date)
-            
-        chore_data = {
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    recurrence = request.form.get('recurrence', 'once').strip()
+    due_date = request.form.get('due_date', '').strip()
+    assigned_to_str = request.form.get('assigned_to', '').strip()
+
+    roommates = user_model.get_users_by_group(current_user.group_id)
+
+    if not title or not due_date or not assigned_to_str:
+        flash("任務名稱、到期日與指派對象為必填！", "danger")
+        return render_template('chore/form.html', chore=None, members=roommates)
+
+    try:
+        assigned_to = int(assigned_to_str)
+        chore_id = chore_model.create({
             'group_id': current_user.group_id,
             'title': title,
-            'description': description,
+            'description': description or None,
             'recurrence': recurrence,
             'due_date': due_date,
-            'assigned_to': assigned_to_id,
-            'status': 'pending',
-            'created_by': current_user.id
-        }
-        
-        new_chore = Chore.create(chore_data)
-        if new_chore:
-            # 發送通知給被指派人 (排除自己指派給自己)
-            if assigned_to_id != current_user.id:
-                assignee = next((m for m in members if m.id == assigned_to_id), None)
-                if assignee:
-                    Notification.create({
-                        'user_id': assigned_to_id,
-                        'group_id': current_user.group_id,
-                        'type': 'chore',
-                        'title': '被指派新家事任務',
-                        'message': f'室友 {current_user.nickname} 指派了一項家事任務給您：「{title}」，請在 {due_date} 前完成。'
-                    })
-                    
-            flash('家事任務建立並指派成功！', 'success')
-            return redirect(url_for('chore.list_chores'))
-        else:
-            flash('建立任務失敗，請重試。', 'danger')
-            
-    return render_template('chore/form.html', members=members)
-
-@chore_bp.route('/<int:chore_id>/complete', methods=['POST'])
-@login_required
-@group_required
-def complete_chore(chore_id):
-    """標記家事任務為已完成"""
-    chore = Chore.get_by_id(chore_id)
-    if not chore or chore.group_id != current_user.group_id:
-        flash('找不到該家事任務！', 'danger')
-        return redirect(url_for('chore.list_chores'))
-        
-    if chore.assigned_to != current_user.id and current_user.role != 'admin':
-        flash('只有該任務的指派人或群組管理員才能標記完成！', 'danger')
-        return redirect(url_for('chore.list_chores'))
-        
-    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    Chore.update(chore_id, {
-        'status': 'completed',
-        'completed_at': now_str
-    })
-    
-    # 建立週期性任務的下一期任務 (若是循環任務)
-    if chore.recurrence != 'once':
-        try:
-            due_date_obj = datetime.strptime(chore.due_date, '%Y-%m-%d')
-        except ValueError:
-            due_date_obj = datetime.now()
-            
-        import datetime as dt
-        if chore.recurrence == 'daily':
-            next_due = due_date_obj + dt.timedelta(days=1)
-        elif chore.recurrence == 'weekly':
-            next_due = due_date_obj + dt.timedelta(weeks=1)
-        elif chore.recurrence == 'monthly':
-            # 約略加 30 天，或下個月同日
-            next_due = due_date_obj + dt.timedelta(days=30)
-            
-        Chore.create({
-            'group_id': chore.group_id,
-            'title': chore.title,
-            'description': chore.description,
-            'recurrence': chore.recurrence,
-            'due_date': next_due.strftime('%Y-%m-%d'),
-            'assigned_to': chore.assigned_to,
+            'assigned_to': assigned_to,
             'status': 'pending',
             'created_by': current_user.id
         })
+
+        # 指派通知
+        noti_model.create({
+            'user_id': assigned_to,
+            'group_id': current_user.group_id,
+            'type': 'chore',
+            'title': '您被指派了新的家事任務',
+            'message': f'任務「{title}」已指派給您，請於 {due_date} 前完成！',
+            'is_read': 0
+        })
+
+        flash("任務指派成功！已通知該名成員。", "success")
+        return redirect(url_for('chore.list_chores'))
+    except Exception as e:
+        flash(f"任務建立失敗，資料庫錯誤：{e}", "danger")
+        return render_template('chore/form.html', chore=None, members=roommates)
+
+@chore_bp.route('/chores/<int:id>/edit', methods=['GET'])
+@login_required
+@group_required
+def edit_chore(id):
+    chore = chore_model.get_by_id(id)
+    if not chore or chore['group_id'] != current_user.group_id:
+        abort(404)
         
-    # 通知建立者與群組內其他室友
-    members = User.get_by_group(current_user.group_id)
-    for m in members:
-        if m.id != current_user.id:
-            Notification.create({
-                'user_id': m.id,
+    try:
+        roommates = user_model.get_users_by_group(current_user.group_id)
+        return render_template('chore/form.html', chore=chore, members=roommates)
+    except Exception as e:
+        flash(f"無法載入編輯頁面：{e}", "danger")
+        return redirect(url_for('chore.list_chores'))
+
+@chore_bp.route('/chores/<int:id>/update', methods=['POST'])
+@login_required
+@group_required
+def update_chore(id):
+    chore = chore_model.get_by_id(id)
+    if not chore or chore['group_id'] != current_user.group_id:
+        abort(404)
+
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    recurrence = request.form.get('recurrence', 'once').strip()
+    due_date = request.form.get('due_date', '').strip()
+    assigned_to_str = request.form.get('assigned_to', '').strip()
+
+    roommates = user_model.get_users_by_group(current_user.group_id)
+
+    if not title or not due_date or not assigned_to_str:
+        flash("任務名稱、到期日與指派對象為必填！", "danger")
+        return render_template('chore/form.html', chore=chore, members=roommates)
+
+    try:
+        assigned_to = int(assigned_to_str)
+        old_assigned_to = chore['assigned_to']
+        
+        chore_model.update(id, {
+            'title': title,
+            'description': description or None,
+            'recurrence': recurrence,
+            'due_date': due_date,
+            'assigned_to': assigned_to
+        })
+
+        # 指派對象若有變更，則發送通知
+        if assigned_to != old_assigned_to:
+            noti_model.create({
+                'user_id': assigned_to,
                 'group_id': current_user.group_id,
                 'type': 'chore',
-                'title': '家事任務已完成',
-                'message': f'室友 {current_user.nickname} 已完成了家事任務：「{chore.title}」。'
+                'title': '您被指派了變更後的家事任務',
+                'message': f'任務「{title}」指派對象已變更為您，請於 {due_date} 前完成！',
+                'is_read': 0
             })
-            
-    flash('已標記任務為已完成！', 'success')
-    return redirect(url_for('chore.list_chores'))
 
-@chore_bp.route('/<int:chore_id>/delete', methods=['POST'])
+        flash("任務修改成功！", "success")
+        return redirect(url_for('chore.list_chores'))
+    except Exception as e:
+        flash(f"修改失敗，資料庫錯誤：{e}", "danger")
+        return render_template('chore/form.html', chore=chore, members=roommates)
+
+@chore_bp.route('/chores/<int:id>/complete', methods=['POST'])
 @login_required
 @group_required
-def delete_chore(chore_id):
-    """刪除家事任務"""
-    chore = Chore.get_by_id(chore_id)
-    if not chore or chore.group_id != current_user.group_id:
-        flash('找不到該家事任務！', 'danger')
-        return redirect(url_for('chore.list_chores'))
-        
-    if chore.created_by != current_user.id and current_user.role != 'admin':
-        flash('只有任務建立者或群組管理員才能刪除此任務！', 'danger')
-        return redirect(url_for('chore.list_chores'))
-        
-    if Chore.delete(chore_id):
-        flash('家事任務已成功刪除！', 'info')
-    else:
-        flash('刪除任務失敗，請重試。', 'danger')
-        
-    return redirect(url_for('chore.list_chores'))
+def complete_chore(id):
+    chore = chore_model.get_by_id(id)
+    if not chore or chore['group_id'] != current_user.group_id:
+        abort(404)
 
-@chore_bp.route('/calendar')
-@login_required
-@group_required
-def calendar_view():
-    """值日生排班日曆視角"""
-    chores = Chore.get_by_group(current_user.group_id)
-    members = User.get_by_group(current_user.group_id)
-    members_dict = {m.id: m for m in members}
-    
-    # 將任務依日期分組
-    calendar_data = {}
-    for c in chores:
-        due_date = c.due_date
-        assignee = members_dict.get(c.assigned_to)
-        
-        if due_date not in calendar_data:
-            calendar_data[due_date] = []
-            
-        calendar_data[due_date].append({
-            'info': c,
-            'assignee_nickname': assignee.nickname if assignee else '未指派'
+    # 權限驗證：只有指派者(或當初指派對象本人)可以標記完成？
+    # ROUTES.md 錯誤處理規定：「非負責人操作」報錯。說明只有任務負責人 (assigned_to) 才能完成
+    if chore['assigned_to'] != current_user.id:
+        flash("您非本任務的負責人，無法標記完成！", "danger")
+        return redirect(url_for('chore.list_chores'))
+
+    try:
+        now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        chore_model.update(id, {
+            'status': 'completed',
+            'completed_at': now_str
         })
-        
-    # 依日期排序
-    sorted_calendar = sorted(calendar_data.items())
-    
-    return render_template('chore/calendar.html', calendar=sorted_calendar)
+        flash("恭喜！任務已標記為已完成。", "success")
+        return redirect(url_for('chore.list_chores'))
+    except Exception as e:
+        flash(f"標記完成失敗：{e}", "danger")
+        return redirect(url_for('chore.list_chores'))
