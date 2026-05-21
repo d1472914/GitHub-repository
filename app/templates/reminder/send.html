@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}發送匿名提醒 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('reminder.inbox') }}" class="text-decoration-none text-danger">友善黑臉</a></li>
+                <li class="breadcrumb-item active" aria-current="page">發送提醒</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card main-card p-4">
+            <h3 class="font-weight-bold text-dark mb-4"><i class="bi bi-send text-danger me-2"></i>投遞匿名提醒</h3>
+            <p class="text-muted">在這裡選擇要提醒的室友與分類，您可以選用系統精選的「友善溝通模板」，或是自己撰寫內容。<strong>提醒為完全匿名發送，對方不會知道是誰投遞的。</strong></p>
+            
+            <div class="alert alert-info border-0 mb-4" style="border-radius: 12px; font-size: 0.9rem;">
+                <i class="bi bi-shield-fill-check me-2"></i>
+                <strong>防騷擾機制：</strong> 為了防止洗版，對同一位室友發送匿名提醒的冷卻時間為 <strong>1 小時</strong>。
+            </div>
+            
+            <form action="{{ url_for('reminder.send_reminder') }}" method="POST">
+                <!-- 室友選擇 -->
+                <div class="mb-3">
+                    <label for="receiver" class="form-label font-weight-bold">提醒對象 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="receiver" name="receiver" required style="border-radius: 8px;">
+                        <option value="" disabled {% if not receiver %}selected{% endif %}>請選擇被提醒的室友...</option>
+                        {% for r in roommates %}
+                            <option value="{{ r.id }}" {% if receiver == r.id %}selected{% endif %}>{{ r.nickname }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- 類別選擇 -->
+                <div class="mb-3">
+                    <label for="category" class="form-label font-weight-bold">事項類別 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="category" name="category" required style="border-radius: 8px;">
+                        <option value="" disabled {% if not category %}selected{% endif %}>請選擇類別...</option>
+                        <option value="noise" {% if category == 'noise' %}selected{% endif %}>噪音管理</option>
+                        <option value="hygiene" {% if category == 'hygiene' %}selected{% endif %}>衛生清潔</option>
+                        <option value="other" {% if category == 'other' %}selected{% endif %}>其他約定</option>
+                    </select>
+                </div>
+                
+                <!-- 訊息來源類型：範本 / 自訂 -->
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold d-block">提醒文字來源</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="message_type" id="type-preset" value="preset" {% if message_type != 'custom' %}checked{% endif %}>
+                        <label class="form-check-label font-weight-bold" style="cursor: pointer;" for="type-preset">使用友善溝通模版 (建議)</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="message_type" id="type-custom" value="custom" {% if message_type == 'custom' %}checked{% endif %}>
+                        <label class="form-check-label font-weight-bold" style="cursor: pointer;" for="type-custom">撰寫自訂留言</label>
+                    </div>
+                </div>
+                
+                <!-- 友善溝通模板下拉選單 -->
+                <div class="mb-4" id="preset-block">
+                    <label for="preset_message" class="form-label font-weight-bold">模版內容</label>
+                    <select class="form-select" id="preset_message" name="preset_message" style="border-radius: 8px;">
+                        <option value="" disabled selected>請先選擇事項類別...</option>
+                    </select>
+                    <div class="form-text text-muted">我們為您修飾了語氣，讓溝通不再劍拔弩張。</div>
+                </div>
+                
+                <!-- 自訂留言文字框 -->
+                <div class="mb-4 d-none" id="custom-block">
+                    <label for="custom_message" class="form-label font-weight-bold">自訂留言內容</label>
+                    <textarea class="form-control" id="custom_message" name="custom_message" rows="4" 
+                              placeholder="請輸入欲投遞的內容，請保持禮貌與客觀，理性討論生活習慣..." style="border-radius: 8px;"></textarea>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('reminder.inbox') }}" class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
+                        取消
+                    </a>
+                    <button type="submit" class="btn btn-gradient-primary w-75">
+                        <i class="bi bi-send-fill me-1"></i>匿名投遞
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 將 Flask 範本傳遞為 JSON 物件
+const PRESETS = {{ templates|tojson|safe }};
+
+const categorySelect = document.getElementById('category');
+const presetMessageSelect = document.getElementById('preset_message');
+const typePreset = document.getElementById('type-preset');
+const typeCustom = document.getElementById('type-custom');
+const presetBlock = document.getElementById('preset-block');
+const customBlock = document.getElementById('custom-block');
+const presetInput = document.getElementById('preset_message');
+const customInput = document.getElementById('custom_message');
+
+function updatePresets() {
+    const category = categorySelect.value;
+    presetMessageSelect.innerHTML = '';
+    
+    if (!category || !PRESETS[category]) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.disabled = true;
+        opt.selected = true;
+        opt.textContent = '請先選擇事項類別...';
+        presetMessageSelect.appendChild(opt);
+        return;
+    }
+    
+    PRESETS[category].forEach((msg, idx) => {
+        const opt = document.createElement('option');
+        opt.value = msg;
+        opt.textContent = msg;
+        if (idx === 0) opt.selected = true;
+        presetMessageSelect.appendChild(opt);
+    });
+}
+
+function toggleMessageType() {
+    if (typePreset.checked) {
+        presetBlock.classList.remove('d-none');
+        customBlock.classList.add('d-none');
+        presetInput.required = true;
+        customInput.required = false;
+    } else {
+        presetBlock.classList.add('d-none');
+        customBlock.classList.remove('d-none');
+        presetInput.required = false;
+        customInput.required = true;
+    }
+}
+
+categorySelect.addEventListener('change', updatePresets);
+typePreset.addEventListener('change', toggleMessageType);
+typeCustom.addEventListener('change', toggleMessageType);
+
+// 初始化
+updatePresets();
+toggleMessageType();
+</script>
+{% endblock %}

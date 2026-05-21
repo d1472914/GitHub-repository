@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}電費帳單詳情 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('electricity.list_bills') }}" class="text-decoration-none text-warning">智慧電費</a></li>
+                <li class="breadcrumb-item active" aria-current="page">帳單詳情與申報</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 左側：帳單總結與申報入口 -->
+    <div class="col-lg-5">
+        <!-- 帳單基本資料 -->
+        <div class="card main-card p-4 mb-4">
+            <h5 class="font-weight-bold text-dark mb-3"><i class="bi bi-receipt text-warning me-2"></i>帳單基本資料</h5>
+            
+            <div class="mb-3">
+                <span class="text-muted d-block" style="font-size: 0.8rem;">計費期間</span>
+                <span class="fs-4 font-weight-bold text-dark">{{ bill.period_start }} ~ {{ bill.period_end }}</span>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="bg-light p-3 rounded-3">
+                        <span class="text-muted d-block" style="font-size: 0.8rem;">台電帳單總額</span>
+                        <span class="fs-4 font-weight-bold text-dark">${{ bill.total_amount }}</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-light p-3 rounded-3">
+                        <span class="text-muted d-block" style="font-size: 0.8rem;">總用電度數</span>
+                        <span class="fs-4 font-weight-bold text-dark">{{ bill.total_kwh }} 度</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if is_settled %}
+                {% set rate = (bill.total_amount / bill.total_kwh)|round(4) if bill.total_kwh > 0 else 0 %}
+                <div class="alert alert-success border-0 mb-4" style="border-radius: 12px;">
+                    <h6 class="font-weight-bold mb-1"><i class="bi bi-calculator me-1"></i>自動計算說明：</h6>
+                    <ul class="mb-0 ps-3" style="font-size: 0.85rem;">
+                        <li>電費費率：每度約 <strong>${{ rate }}</strong> 元</li>
+                        <li>全體房間總用電：
+                            {% set room_sum = namespace(value=0.0) %}
+                            {% for m in members %}
+                                {% if m.reading %}
+                                    {% set room_sum.value = room_sum.value + (m.reading.end_reading - m.reading.start_reading) %}
+                                {% endif %}
+                            {% endfor %}
+                            <strong>{{ room_sum.value|round(1) }}</strong> 度
+                        </li>
+                        <li>客廳等公用電：<strong>{{ (bill.total_kwh - room_sum.value)|round(1) }}</strong> 度（已由全體均分）</li>
+                    </ul>
+                </div>
+            {% endif %}
+            
+            <!-- 申報動作區 -->
+            <div class="border-top pt-3">
+                {% if not is_settled %}
+                    {% if not user_reading %}
+                        <div class="alert alert-warning border-0 mb-3" style="border-radius: 12px; font-size: 0.9rem;">
+                            <i class="bi bi-exclamation-circle me-1"></i>您尚未申報此期的房間電表度數，請儘速申報。
+                        </div>
+                        <a href="{{ url_for('electricity.log_reading', bill_id=bill.id) }}" class="btn btn-gradient-primary w-100">
+                            <i class="bi bi-upload me-1"></i>申報房間度數
+                        </a>
+                    {% else %}
+                        <div class="bg-success-subtle text-success p-3 rounded-3 mb-3" style="font-size: 0.9rem;">
+                            <i class="bi bi-check-circle-fill me-1"></i>您已成功申報！
+                            <br>起始度數：<strong>{{ user_reading.start_reading }}</strong>
+                            <br>結束度數：<strong>{{ user_reading.end_reading }}</strong>
+                            <br>本次用電：<strong>{{ user_reading.end_reading - user_reading.start_reading }}</strong> 度
+                        </div>
+                        <a href="{{ url_for('electricity.log_reading', bill_id=bill.id) }}" class="btn btn-outline-secondary w-100 mb-2" style="border-radius: 10px;">
+                            <i class="bi bi-pencil me-1"></i>修改度數
+                        </a>
+                        <small class="text-muted d-block text-center mt-1">電費將在所有室友均上報後自動結算分攤金額。</small>
+                    {% endif %}
+                {% else %}
+                    <!-- 已結算 - 繳款動作區 -->
+                    {% if user_split %}
+                        <div class="bg-light p-3 rounded-3 mb-3">
+                            <h6 class="font-weight-bold text-dark mb-2">您的分攤金額</h6>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.9rem;">
+                                <span class="text-muted">房間用電 ({{ (user_reading.end_reading - user_reading.start_reading)|round(1) if user_reading else 0 }} 度)：</span>
+                                <strong>${{ user_split.personal_amount }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.9rem;">
+                                <span class="text-muted">公共用電均分：</span>
+                                <strong>${{ user_split.shared_amount }}</strong>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="font-weight-bold text-dark">總應付電費：</span>
+                                <span class="fs-4 font-weight-bold text-danger">${{ user_split.total_amount }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if user_split.is_paid %}
+                            <div class="btn btn-outline-success w-100 disabled" style="border-radius: 10px; font-weight: 600;">
+                                <i class="bi bi-check-circle-fill me-1"></i>您已完成此期繳費
+                            </div>
+                        {% else %}
+                            <form action="{{ url_for('electricity.pay_bill', bill_id=bill.id) }}" method="POST" class="m-0">
+                                <button type="submit" class="btn btn-gradient-primary w-100">
+                                    <i class="bi bi-credit-card me-1"></i>我已轉帳/繳款，標記為已繳納
+                                </button>
+                            </form>
+                            <small class="text-muted d-block text-center mt-2">請向宿舍長/記帳員轉帳繳費後，點選此按鈕標記狀態。</small>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+            
+            <!-- 刪除帳單 (僅限建立者或管理員) -->
+            {% if bill.created_by == current_user.id or current_user.role == 'admin' %}
+                <div class="mt-4 border-top pt-3 text-center">
+                    <form action="{{ url_for('electricity.delete_bill', bill_id=bill.id) }}" method="POST" class="m-0" onsubmit="return confirm('確定要刪除此期電費帳單嗎？這會清除所有室友已上傳的度數與分攤記錄！')">
+                        <button type="submit" class="btn btn-link btn-sm text-danger text-decoration-none p-0">
+                            <i class="bi bi-trash me-1"></i>刪除此筆電費帳單
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 右側：全體室友度數與帳務申報名單 -->
+    <div class="col-lg-7">
+        <div class="card main-card p-4">
+            <h5 class="font-weight-bold text-dark mb-3"><i class="bi bi-people-fill text-primary me-2"></i>全體室友申報與分攤狀態</h5>
+            <p class="text-muted">本期所有室友的房間分表讀數與結算帳務：</p>
+            
+            <div class="list-group list-group-flush">
+                {% for m in members %}
+                    <div class="list-group-item px-0 py-3 border-0 border-bottom d-flex flex-column gap-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person-circle text-secondary me-2 fs-5"></i>
+                                <span class="font-weight-bold">{{ m.user.nickname }}</span>
+                                {% if m.user.id == current_user.id %}
+                                    <span class="badge bg-light text-dark ms-1">自己</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                {% if not m.reading %}
+                                    <span class="badge bg-warning-subtle text-warning font-weight-bold"><i class="bi bi-hourglass me-1"></i>尚未申報</span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success font-weight-bold"><i class="bi bi-check-lg me-1"></i>度數已申報</span>
+                                {% endif %}
+                                
+                                {% if is_settled and m.split %}
+                                    {% if m.split.is_paid %}
+                                        <span class="badge bg-success font-weight-bold ms-1"><i class="bi bi-check2-all me-1"></i>已完成繳費</span>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger font-weight-bold ms-1"><i class="bi bi-clock me-1"></i>未繳費</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row g-2 text-muted" style="font-size: 0.85rem;">
+                            <!-- 度數顯示 -->
+                            <div class="col-sm-6">
+                                <i class="bi bi-speedometer2 me-1"></i>分表讀數：
+                                {% if m.reading %}
+                                    <strong>{{ m.reading.start_reading }}</strong> → <strong>{{ m.reading.end_reading }}</strong> (用電: <strong>{{ m.reading.end_reading - m.reading.start_reading }}</strong> 度)
+                                {% else %}
+                                    <span class="text-warning">等待輸入...</span>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 費用顯示 -->
+                            {% if is_settled and m.split %}
+                                <div class="col-sm-6 text-sm-end">
+                                    <i class="bi bi-wallet2 me-1"></i>分攤：
+                                    房電 <strong>${{ m.split.personal_amount }}</strong> + 公電 <strong>${{ m.split.shared_amount }}</strong> = <strong>${{ m.split.total_amount }}</strong>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

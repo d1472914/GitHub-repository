@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if action_type == 'new' %}新增物資{% else %}編輯物資規格：{{ item.name }}{% endif %} - RoomieCo
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('inventory.list_items') }}" class="text-decoration-none text-secondary">物資庫存</a></li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    {% if action_type == 'new' %}新增物資{% else %}編輯物資規格{% endif %}
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card main-card p-4">
+            <h3 class="font-weight-bold text-dark mb-4">
+                {% if action_type == 'new' %}
+                    <i class="bi bi-plus-circle text-primary me-2"></i>新增物資品項
+                {% else %}
+                    <i class="bi bi-pencil-square text-primary me-2"></i>修改物資規格
+                {% endif %}
+            </h3>
+            
+            {% set form_url = url_for('inventory.create_item') if action_type == 'new' else url_for('inventory.edit_item', item_id=item.id) %}
+            
+            <form action="{{ form_url }}" method="POST">
+                <div class="mb-3">
+                    <label for="name" class="form-label font-weight-bold">物資名稱 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ name if name else (item.name if item else '') }}" 
+                           placeholder="例如：衛生紙、洗碗精、大黑色垃圾袋" required style="border-radius: 8px;">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="unit" class="form-label font-weight-bold">計量單位 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="unit" name="unit" 
+                           value="{{ unit if unit else (item.unit if item else '') }}" 
+                           placeholder="例如：包、瓶、箱、個" required style="border-radius: 8px;">
+                </div>
+                
+                {% if action_type == 'new' %}
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label font-weight-bold">初始庫存量 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                               value="{{ quantity if quantity is not none else '0' }}" min="0" required style="border-radius: 8px;">
+                        <div class="form-text text-muted">目前已有的公用數量。</div>
+                    </div>
+                {% endif %}
+                
+                <div class="mb-4">
+                    <label for="min_quantity" class="form-label font-weight-bold">最低安全存量 (告警界線) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="min_quantity" name="min_quantity" 
+                           value="{{ min_quantity if min_quantity is not none else (item.min_quantity if item else '0') }}" min="0" required style="border-radius: 8px;">
+                    <div class="form-text text-muted">當庫存量低於或等於此數值時，系統會在首頁發出警報並通知全體室友補貨。</div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{% if action_type == 'new' %}{{ url_for('inventory.list_items') }}{% else %}{{ url_for('inventory.detail', item_id=item.id) }}{% endif %}" 
+                       class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
+                        取消
+                    </a>
+                    <button type="submit" class="btn btn-gradient-primary w-75">
+                        確認送出
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

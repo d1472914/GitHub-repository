@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}提醒數據統計 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('reminder.inbox') }}" class="text-decoration-none text-danger">友善黑臉</a></li>
+                <li class="breadcrumb-item active" aria-current="page">提醒統計</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card main-card p-4">
+            <h3 class="font-weight-bold text-dark mb-2"><i class="bi bi-bar-chart-line text-danger me-2"></i>群組匿名提醒統計</h3>
+            <p class="text-muted">本統計資料僅顯示群組內匿名提醒的「分類次數」，不會透露任何發送人與接收人的配對關係，旨在讓大家客觀了解本寢室/公寓目前最需要改善的生活習慣面向。</p>
+            
+            <div class="text-center py-4 bg-light rounded-3 mb-4">
+                <span class="text-muted d-block" style="font-size: 0.9rem; font-weight: 600;">群組累計提醒次數</span>
+                <span class="fs-1 font-weight-bold text-dark">{{ total }}</span>
+                <span class="text-muted d-block" style="font-size: 0.8rem; margin-top: 5px;"><i class="bi bi-shield-shaded"></i> 匿名數據，保障隱私</span>
+            </div>
+            
+            <h5 class="font-weight-bold text-dark mb-3">各分類佔比明細</h5>
+            <div class="d-flex flex-column gap-4">
+                {% for item in stats %}
+                    <div>
+                        <div class="d-flex justify-content-between font-weight-bold mb-2">
+                            <span>
+                                {% if item.key == 'noise' %}
+                                    <i class="bi bi-volume-mute text-info me-1"></i>
+                                {% elif item.key == 'hygiene' %}
+                                    <i class="bi bi-trash3 text-success me-1"></i>
+                                {% else %}
+                                    <i class="bi bi-info-circle text-secondary me-1"></i>
+                                {% endif %}
+                                {{ item.name }}
+                            </span>
+                            <span class="text-dark">{{ item.count }} 次</span>
+                        </div>
+                        
+                        {% set percent = (item.count / total * 100)|int if total > 0 else 0 %}
+                        <div class="progress" style="height: 12px; border-radius: 6px; background-color: #f1f5f9;">
+                            <div class="progress-bar {% if item.key == 'noise' %}bg-info{% elif item.key == 'hygiene' %}bg-success{% else %}bg-secondary{% endif %}" 
+                                 role="progressbar" style="width: {{ percent }}%; border-radius: 6px;" 
+                                 aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+                <a href="{{ url_for('reminder.inbox') }}" class="btn btn-light px-4" style="border-radius: 10px; font-weight: 600;">
+                    返回收件匣
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

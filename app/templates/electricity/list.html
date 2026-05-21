@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}智慧電費 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="font-weight-bold"><i class="bi bi-lightning-charge text-warning me-2"></i>智慧電費</h2>
+        <p class="text-muted">由管理員輸入整戶總電費及總度數後，室友登錄各自的房間分電表，系統將自動算出「個人房間用電」與「公共均分用電」（如客廳、冰箱、冷氣等公用電），落實公平分攤！</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
+        <a href="{{ url_for('electricity.create_bill') }}" class="btn btn-gradient-primary">
+            <i class="bi bi-plus-lg me-1"></i>登錄新帳單
+        </a>
+    </div>
+</div>
+
+{% if not bills %}
+<div class="card main-card p-5 text-center my-4">
+    <div class="py-5">
+        <i class="bi bi-lightning-charge-fill text-muted" style="font-size: 4rem;"></i>
+        <h4 class="font-weight-bold text-dark mt-3">目前沒有電費帳單記錄</h4>
+        <p class="text-muted mb-4">收到台電的電費單了嗎？立即建立一筆以利室友進行度數申報！</p>
+        <a href="{{ url_for('electricity.create_bill') }}" class="btn btn-gradient-primary px-4">
+            <i class="bi bi-plus-lg me-1"></i>建立新帳單
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="row g-3">
+    {% for b in bills %}
+        <div class="col-12">
+            <div class="card main-card p-4 border-start {% if b.is_settled %}border-start-success border-4{% else %}border-start-warning border-4{% endif %}">
+                <div class="row g-3 align-items-center">
+                    <!-- 帳單期間與基本資訊 -->
+                    <div class="col-md-4">
+                        <span class="badge bg-secondary-subtle text-secondary font-weight-bold mb-2">計費期間</span>
+                        <h4 class="font-weight-bold text-dark mb-1">{{ b.info.period_start }} ~ {{ b.info.period_end }}</h4>
+                        <div class="text-muted" style="font-size: 0.85rem;">
+                            總金額：<strong>${{ b.info.total_amount }}</strong> | 總度數：<strong>{{ b.info.total_kwh }} 度</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- 度數申報進度 -->
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <span class="font-weight-bold text-dark" style="font-size: 0.9rem;">度數申報進度：</span>
+                            <span class="badge {% if b.reading_count == b.total_members %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %}">
+                                {{ b.reading_count }} / {{ b.total_members }} 已申報
+                            </span>
+                        </div>
+                        {% set percent = (b.reading_count / b.total_members * 100)|int %}
+                        <div class="progress" style="height: 6px; border-radius: 3px; background-color: #f1f5f9;">
+                            <div class="progress-bar {% if b.reading_count == b.total_members %}bg-success{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 我的應付/繳納狀態 -->
+                    <div class="col-md-4 text-md-end">
+                        {% if b.is_settled %}
+                            {% if b.user_split %}
+                                <div class="d-inline-block text-start text-md-end me-md-3 mb-2 mb-md-0">
+                                    <span class="text-muted d-block" style="font-size: 0.8rem;">您的應付費用</span>
+                                    <span class="fs-4 font-weight-bold text-dark">${{ b.user_split.total_amount }}</span>
+                                    {% if b.user_split.is_paid %}
+                                        <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>已繳費</span>
+                                    {% else %}
+                                        <span class="badge bg-danger ms-2"><i class="bi bi-clock me-1"></i>未繳費</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="d-inline-block text-start text-md-end me-md-3 mb-2 mb-md-0">
+                                <span class="badge bg-warning-subtle text-warning-emphasis font-weight-bold p-2"><i class="bi bi-hourglass-split me-1"></i>等待全體上報後自動結算</span>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="d-block mt-2">
+                            <a href="{{ url_for('electricity.detail', bill_id=b.info.id) }}" class="btn btn-sm btn-outline-primary px-3 rounded-pill">
+                                查看明細與申報 <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<style>
+.border-start-success {
+    border-left-color: #10b981 !important;
+}
+.border-start-warning {
+    border-left-color: #f59e0b !important;
+}
+</style>
+{% endblock %}

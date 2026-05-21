@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}群組設定 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <!-- 群組基本資料與名稱更新 -->
+    <div class="col-md-5">
+        <div class="card main-card p-4 h-100">
+            <h4 class="font-weight-bold mb-3"><i class="bi bi-house-gear-fill text-primary me-2"></i>群組基本資料</h4>
+            
+            <div class="mb-4 bg-light p-3 rounded-3 position-relative">
+                <span class="text-muted d-block" style="font-size: 0.8rem;">邀請碼 (分享給室友)</span>
+                <span class="fs-3 font-weight-bold text-dark" id="invite-code-text">{{ group.invite_code }}</span>
+                <button class="btn btn-sm btn-outline-primary position-absolute end-0 top-50 translate-middle-y me-3" onclick="navigator.clipboard.writeText('{{ group.invite_code }}'); alert('邀請碼已複製：{{ group.invite_code }}')">
+                    <i class="bi bi-clipboard me-1"></i>複製
+                </button>
+            </div>
+            
+            {% if is_admin %}
+                <form action="{{ url_for('group.update_group') }}" method="POST" class="mb-4">
+                    <div class="mb-3">
+                        <label for="name" class="form-label font-weight-bold">修改群組名稱</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ group.name }}" required style="border-radius: 8px;">
+                    </div>
+                    <button type="submit" class="btn btn-gradient-primary w-100">
+                        <i class="bi bi-check-lg me-1"></i>更新名稱
+                    </button>
+                </form>
+            {% else %}
+                <div class="mb-4">
+                    <label class="form-label font-weight-bold text-muted">群組名稱</label>
+                    <div class="fs-4 font-weight-bold">{{ group.name }}</div>
+                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>非管理員無法修改群組名稱。</small>
+                </div>
+            {% endif %}
+            
+            <hr class="my-4">
+            
+            <!-- 離開群組區域 -->
+            <div>
+                <h5 class="font-weight-bold text-danger mb-2"><i class="bi bi-exclamation-octagon-fill me-2"></i>危險區域</h5>
+                <p class="text-muted" style="font-size: 0.85rem;">
+                    離開群組後，您將無法瀏覽此群組的公約、開支、家事等所有記錄。
+                    {% if is_admin %}
+                        <br><strong class="text-danger"><i class="bi bi-warning me-1"></i>您是目前群組管理員：</strong> 離開時，系統會自動將管理員權限移交給群組內的另一位室友。如果是最後一人離開，群組將被自動刪除。
+                    {% endif %}
+                </p>
+                <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#leaveGroupModal">
+                    <i class="bi bi-box-arrow-left me-1"></i>離開此群組
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 成員名單 -->
+    <div class="col-md-7">
+        <div class="card main-card p-4 h-100">
+            <h4 class="font-weight-bold mb-3"><i class="bi bi-people-fill text-success me-2"></i>室友名單 ({{ members|length }} 人)</h4>
+            <p class="text-muted">目前共同生活在該群組中的所有室友。</p>
+            
+            <div class="list-group list-group-flush">
+                {% for m in members %}
+                    <div class="list-group-item px-0 py-3 border-0 border-bottom d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                                <i class="bi bi-person fs-4"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 font-weight-bold text-dark">
+                                    {{ m.nickname }}
+                                    {% if m.id == current_user.id %}
+                                        <span class="badge bg-light text-dark ms-1">自己</span>
+                                    {% endif %}
+                                    {% if m.role == 'admin' %}
+                                        <span class="badge bg-indigo-100 text-indigo-700 ms-1" style="background-color: #e0e7ff; color: #4338ca;">管理員</span>
+                                    {% endif %}
+                                </h6>
+                                <small class="text-muted">{{ m.email }}</small>
+                            </div>
+                        </div>
+                        <span class="text-muted" style="font-size: 0.85rem;">
+                            <i class="bi bi-calendar3 me-1"></i>已加入
+                        </span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 離開群組確認 -->
+<div class="modal fade" id="leaveGroupModal" tabindex="-1" aria-labelledby="leaveGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title font-weight-bold text-dark" id="leaveGroupModalLabel">確認要離開群組嗎？</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                您確定要離開群組「<strong>{{ group.name }}</strong>」嗎？此操作將會解除您與此群組的關聯。
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius: 10px; font-weight: 600;">取消</button>
+                <form action="{{ url_for('group.leave_group') }}" method="POST" class="m-0">
+                    <button type="submit" class="btn btn-gradient-danger">確認離開</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

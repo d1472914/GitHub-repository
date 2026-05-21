@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}友善黑臉收件匣 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="font-weight-bold"><i class="bi bi-chat-heart text-danger me-2"></i>友善黑臉 (匿名提醒)</h2>
+        <p class="text-muted">想提醒室友又怕壞了感情？讓系統當黑臉！在此接收室友的匿名溫馨提醒，或是向室友投遞提醒。本區絕對匿名，請以溫和理性的態度共同經營生活環境。</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end gap-2">
+        <a href="{{ url_for('reminder.stats') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-bar-chart-line me-1"></i>提醒統計
+        </a>
+        <a href="{{ url_for('reminder.send_reminder') }}" class="btn btn-gradient-primary">
+            <i class="bi bi-send me-1"></i>發送提醒
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card main-card p-4">
+            <h5 class="font-weight-bold text-dark mb-4"><i class="bi bi-mailbox2 text-primary me-2"></i>收件匣</h5>
+            
+            {% if not reminders %}
+                <div class="text-center py-5">
+                    <i class="bi bi-chat-heart-fill text-muted fs-1 mb-2 d-block"></i>
+                    <span class="text-muted">乾淨溜溜！目前沒有收到任何提醒，大家相處得很融洽喔！🌟</span>
+                </div>
+            {% else %}
+                <div class="d-flex flex-column gap-3">
+                    {% for r in reminders %}
+                        <div class="p-3 border rounded-3 bg-white hover-shadow position-relative">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge {% if r.category == 'noise' %}bg-info-subtle text-info-emphasis{% elif r.category == 'hygiene' %}bg-success-subtle text-success-emphasis{% else %}bg-secondary-subtle text-secondary-emphasis{% endif %}">
+                                    {% if r.category == 'noise' %}<i class="bi bi-volume-mute me-1"></i>噪音管理
+                                    {% elif r.category == 'hygiene' %}<i class="bi bi-trash3 me-1"></i>衛生清潔
+                                    {% else %}<i class="bi bi-info-circle me-1"></i>其他事項
+                                    {% endif %}
+                                </span>
+                                <small class="text-muted">{{ r.created_at }}</small>
+                            </div>
+                            
+                            <p class="mb-0 text-dark font-weight-bold p-2 bg-light rounded" style="font-size: 0.95rem; border-left: 3px solid #64748b;">
+                                {{ r.message }}
+                            </p>
+                            
+                            <div class="text-end mt-2">
+                                <small class="text-muted" style="font-size: 0.8rem;"><i class="bi bi-shield-lock me-1"></i>系統已隱藏發送人資訊</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-shadow {
+    transition: box-shadow 0.2s ease;
+}
+.hover-shadow:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+</style>
+{% endblock %}

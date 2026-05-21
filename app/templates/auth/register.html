@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}註冊 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-md-6">
+        <div class="card main-card p-4">
+            <div class="text-center mb-4">
+                <i class="bi bi-person-plus text-primary" style="font-size: 3rem; background: var(--primary-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                <h3 class="mt-3 font-weight-bold">加入 RoomieCo 室友生活圈</h3>
+                <p class="text-muted">體驗智慧、和諧、公平的合租新體驗！</p>
+            </div>
+            
+            <form action="{{ url_for('auth.register_page') }}" method="POST">
+                <div class="mb-3">
+                    <label for="email" class="form-label font-weight-bold">電子郵件 (Email) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                        <input type="email" class="form-control border-start-0 ps-0" id="email" name="email" value="{{ email if email else '' }}" required placeholder="yourname@example.com">
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="nickname" class="form-label font-weight-bold">暱稱 (顯示名稱) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-tag text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="nickname" name="nickname" value="{{ nickname if nickname else '' }}" required placeholder="例：小明">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="password" class="form-label font-weight-bold">密碼 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                            <input type="password" class="form-control border-start-0 ps-0" id="password" name="password" required placeholder="請輸入密碼">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <label for="confirm_password" class="form-label font-weight-bold">確認密碼 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                            <input type="password" class="form-control border-start-0 ps-0" id="confirm_password" name="confirm_password" required placeholder="請再次輸入密碼">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-gradient-primary w-100 py-2">註冊新帳號</button>
+            </form>
+            
+            <div class="text-center mt-4">
+                <span class="text-muted">已經有帳號了？</span>
+                <a href="{{ url_for('auth.login_page') }}" class="text-primary font-weight-bold text-decoration-none">立即登入</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

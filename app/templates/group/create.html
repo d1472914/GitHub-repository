@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}建立新群組 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card main-card p-4 my-4">
+            <div class="text-center mb-4">
+                <i class="bi bi-house-gear text-primary" style="font-size: 3rem;"></i>
+                <h3 class="font-weight-bold mt-2">建立新群組</h3>
+                <p class="text-muted">為你們的宿舍、公寓或合租空間命名</p>
+            </div>
+            
+            <form action="{{ url_for('group.create_group') }}" method="POST">
+                <div class="mb-4">
+                    <label for="name" class="form-label font-weight-bold">群組名稱 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="例如：德田山莊 502 室、和平東路幸福公寓" required autofocus style="border-radius: 8px; padding: 10px 14px;">
+                    <div class="form-text text-muted">建立後，系統將會產生一組專屬邀請碼，讓您可以邀請其他室友加入。</div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('group.group_home') }}" class="btn btn-light w-50" style="border-radius: 10px; font-weight: 600;">返回</a>
+                    <button type="submit" class="btn btn-gradient-primary w-50">確認建立</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

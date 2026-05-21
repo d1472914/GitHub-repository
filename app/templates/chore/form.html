@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}指派新家事任務 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('chore.list_chores') }}" class="text-decoration-none text-info">家事管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">指派任務</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card main-card p-4">
+            <h3 class="font-weight-bold text-dark mb-4"><i class="bi bi-calendar-plus text-info me-2"></i>指派家事任務</h3>
+            <p class="text-muted">指派新的值日家事給自己或室友，並指定完成到期日或循環週期。</p>
+            
+            <form action="{{ url_for('chore.create_chore') }}" method="POST">
+                <div class="mb-3">
+                    <label for="title" class="form-label font-weight-bold">家事任務標題 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="title" name="title" 
+                           value="{{ title if title else '' }}" 
+                           placeholder="例如：倒客廳大垃圾桶、清洗浴室地板、廚房流理台收拾" required style="border-radius: 8px;">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label font-weight-bold">任務說明</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" 
+                              placeholder="請輸入家事的執行細節或注意事項，例如：&#10;1. 垃圾倒完後，請換上新的黑色大塑膠袋。&#10;2. 回收紙箱需先踩扁，寶特瓶需洗淨沖乾淨後壓扁放入回收袋。" 
+                              style="border-radius: 8px;">{{ description if description else '' }}</textarea>
+                </div>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label for="recurrence" class="form-label font-weight-bold">循環週期</label>
+                        <select class="form-select" id="recurrence" name="recurrence" style="border-radius: 8px;">
+                            <option value="once" selected>單次任務 (Once)</option>
+                            <option value="daily">每日循環 (Daily)</option>
+                            <option value="weekly">每週循環 (Weekly)</option>
+                            <option value="monthly">每月循環 (Monthly)</option>
+                        </select>
+                        <div class="form-text text-muted">若設定為循環任務，標記完成時，系統會自動生成下一期的未完成任務。</div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="due_date" class="form-label font-weight-bold">到期日 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="due_date" name="due_date" 
+                               value="{{ due_date if due_date else '' }}" required style="border-radius: 8px;">
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="assigned_to" class="form-label font-weight-bold">指派給誰 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="assigned_to" name="assigned_to" required style="border-radius: 8px;">
+                            {% for m in members %}
+                                <option value="{{ m.id }}" {% if m.id == current_user.id %}selected{% endif %}>
+                                    {{ m.nickname }} ({% if m.id == current_user.id %}自己{% else %}室友{% endif %})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('chore.list_chores') }}" class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
+                        取消
+                    </a>
+                    <button type="submit" class="btn btn-gradient-primary w-75">
+                        確認指派
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}物資庫存 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="font-weight-bold"><i class="bi bi-box-seam text-secondary me-2"></i>公用物資庫存</h2>
+        <p class="text-muted">共同耗材的健康狀況追蹤。隨時登記消耗以防臨時缺貨；採購補貨時，還能一鍵同步將花費均攤到共同帳本，方便極了！</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
+        <a href="{{ url_for('inventory.create_item') }}" class="btn btn-gradient-primary">
+            <i class="bi bi-plus-lg me-1"></i>新增物資
+        </a>
+    </div>
+</div>
+
+{% if not items %}
+<div class="card main-card p-5 text-center my-4">
+    <div class="py-5">
+        <i class="bi bi-box-seam-fill text-muted" style="font-size: 4rem;"></i>
+        <h4 class="font-weight-bold text-dark mt-3">目前物資庫中空空如也</h4>
+        <p class="text-muted mb-4">衛生紙、垃圾袋、洗衣精、洗手乳... 快新增宿舍或公寓常用的公用物資吧！</p>
+        <a href="{{ url_for('inventory.create_item') }}" class="btn btn-gradient-primary px-4">
+            <i class="bi bi-plus-lg me-1"></i>新增第一項物資
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="row g-4">
+    {% for item in items %}
+        <div class="col-md-6 col-lg-4">
+            {% set is_low = item.quantity <= item.min_quantity %}
+            <div class="card main-card p-4 h-100 d-flex flex-column justify-content-between {% if is_low %}border-danger bg-danger-subtle{% endif %}">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h4 class="font-weight-bold text-dark mb-0">{{ item.name }}</h4>
+                        {% if is_low %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>庫存告急</span>
+                        {% else %}
+                            <span class="badge bg-success-subtle text-success font-weight-bold"><i class="bi bi-check-circle me-1"></i>庫存充足</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="my-4 text-center">
+                        <span class="fs-1 font-weight-bold {% if is_low %}text-danger{% else %}text-primary{% endif %}">{{ item.quantity }}</span>
+                        <span class="text-muted ms-1 fs-5">{{ item.unit }}</span>
+                    </div>
+                </div>
+                
+                <div class="pt-3 border-top mt-2" style="font-size: 0.85rem;">
+                    <div class="d-flex justify-content-between mb-3 text-muted">
+                        <span>安全警戒線：<strong>{{ item.min_quantity }} {{ item.unit }}</strong></span>
+                        <span>目前庫存百分比：
+                            {% if item.min_quantity > 0 %}
+                                <strong>{{ (item.quantity / item.min_quantity * 100)|int }}%</strong>
+                            {% else %}
+                                <strong>-</strong>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('inventory.detail', item_id=item.id) }}" class="btn btn-sm btn-outline-primary w-100 font-weight-bold rounded-pill">
+                            <i class="bi bi-arrow-left-right me-1"></i>登記異動 / 補貨
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

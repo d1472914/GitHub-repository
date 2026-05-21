@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}家事管理 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="font-weight-bold"><i class="bi bi-calendar-check text-info me-2"></i>家事任務管理</h2>
+        <p class="text-muted">明確的分工是和平相處的基礎。在這裡指派家事任務、設定循環週期，追蹤值日生進度。</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+        <a href="{{ url_for('chore.calendar_view') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-calendar3 me-1"></i>值日日曆
+        </a>
+        <a href="{{ url_for('chore.create_chore') }}" class="btn btn-gradient-primary">
+            <i class="bi bi-calendar-plus me-1"></i>指派家事
+        </a>
+    </div>
+</div>
+
+<!-- 分頁頁籤：待辦與已完成 -->
+<div class="card main-card p-4">
+    <ul class="nav nav-tabs mb-4" id="choreTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active font-weight-bold" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+                待完成任務
+                {% set pending_count = namespace(value=0) %}
+                {% for c in chores %}
+                    {% if c.info.status == 'pending' %}
+                        {% set pending_count.value = pending_count.value + 1 %}
+                    {% endif %}
+                {% endfor %}
+                {% if pending_count.value > 0 %}
+                    <span class="badge bg-warning ms-1 text-dark">{{ pending_count.value }}</span>
+                {% endif %}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link font-weight-bold" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button" role="tab" aria-controls="completed" aria-selected="false">
+                已完成任務
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="choreTabContent">
+        <!-- 待完成任務 -->
+        <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+            {% if pending_count.value == 0 %}
+                <div class="text-center py-5">
+                    <i class="bi bi-emoji-smile-fill text-muted fs-1 mb-2 d-block"></i>
+                    <span class="text-muted">目前沒有任何待辦家事，太棒了！</span>
+                </div>
+            {% else %}
+                <div class="row g-3">
+                    {% for c in chores %}
+                        {% if c.info.status == 'pending' %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card border p-3 bg-white h-100 d-flex flex-column justify-content-between hover-shadow {% if c.is_overdue %}border-danger bg-danger-subtle{% endif %}" style="border-radius: 12px;">
+                                    <div>
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <span class="badge {% if c.info.recurrence == 'once' %}bg-secondary-subtle text-secondary{% else %}bg-info-subtle text-info-emphasis{% endif %}">
+                                                {% if c.info.recurrence == 'once' %}一次性
+                                                {% elif c.info.recurrence == 'daily' %}每日
+                                                {% elif c.info.recurrence == 'weekly' %}每週
+                                                {% elif c.info.recurrence == 'monthly' %}每月
+                                                {% endif %}循環
+                                            </span>
+                                            
+                                            {% if c.is_overdue %}
+                                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>已逾期</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <h5 class="font-weight-bold text-dark mb-1">{{ c.info.title }}</h5>
+                                        <p class="text-muted" style="font-size: 0.85rem; min-height: 40px;">{{ c.info.description if c.info.description else '無任務說明。' }}</p>
+                                    </div>
+                                    
+                                    <div class="pt-3 border-top mt-3" style="font-size: 0.85rem;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <span><i class="bi bi-person me-1"></i>執行人：<strong>{{ c.assignee_name }}</strong></span>
+                                            <span class="{% if c.is_overdue %}text-danger font-weight-bold{% else %}text-muted{% endif %}"><i class="bi bi-clock me-1"></i>到期日：{{ c.info.due_date }}</span>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <!-- 只有被指派人或管理員能完成 -->
+                                            {% if c.info.assigned_to == current_user.id or current_user.role == 'admin' %}
+                                                <form action="{{ url_for('chore.complete_chore', chore_id=c.info.id) }}" method="POST" class="m-0 flex-grow-1 me-2">
+                                                    <button type="submit" class="btn btn-sm btn-outline-success w-100 font-weight-bold rounded-pill">
+                                                        <i class="bi bi-check2-circle me-1"></i>標記已完成
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-secondary w-100 disabled rounded-pill me-2" style="font-size: 0.8rem;">
+                                                    僅限指派人完成
+                                                </button>
+                                            {% endif %}
+                                            
+                                            <!-- 刪除按鈕 -->
+                                            {% if c.info.created_by == current_user.id or current_user.role == 'admin' %}
+                                                <form action="{{ url_for('chore.delete_chore', chore_id=c.info.id) }}" method="POST" class="m-0" onsubmit="return confirm('確定要刪除此家事指派嗎？')">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1" style="border-radius: 20px;">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- 已完成任務 -->
+        <div class="tab-pane fade" id="completed" role="tabpanel" aria-labelledby="completed-tab">
+            {% set completed_count = namespace(value=0) %}
+            {% for c in chores %}
+                {% if c.info.status == 'completed' %}
+                    {% set completed_count.value = completed_count.value + 1 %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if completed_count.value == 0 %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x text-muted fs-1 mb-2 d-block"></i>
+                    <span class="text-muted">尚無已完成的任務紀錄。</span>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>家事任務</th>
+                                <th>執行人</th>
+                                <th>週期</th>
+                                <th>完成時間</th>
+                                <th>指派人</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in chores %}
+                                {% if c.info.status == 'completed' %}
+                                    <tr>
+                                        <td>
+                                            <span class="font-weight-bold text-decoration-line-through text-muted">{{ c.info.title }}</span>
+                                            {% if c.info.description %}
+                                                <small class="text-muted d-block" style="font-size: 0.8rem;">{{ c.info.description }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>{{ c.assignee_name }}</strong></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {% if c.info.recurrence == 'once' %}一次性
+                                                {% elif c.info.recurrence == 'daily' %}每日
+                                                {% elif c.info.recurrence == 'weekly' %}每週
+                                                {% elif c.info.recurrence == 'monthly' %}每月
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                        <td><span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>{{ c.info.completed_at }}</span></td>
+                                        <td>{{ c.creator_name }}</td>
+                                        <td>
+                                            {% if c.info.created_by == current_user.id or current_user.role == 'admin' %}
+                                                <form action="{{ url_for('chore.delete_chore', chore_id=c.info.id) }}" method="POST" class="m-0" onsubmit="return confirm('確定要永久刪除此完成紀錄嗎？')">
+                                                    <button type="submit" class="btn btn-link btn-sm text-danger text-decoration-none p-0">
+                                                        <i class="bi bi-trash me-1"></i>刪除
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-shadow {
+    transition: box-shadow 0.2s ease;
+}
+.hover-shadow:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+}
+</style>
+{% endblock %}

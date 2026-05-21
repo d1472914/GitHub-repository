@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}儀表板 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="font-weight-bold">哈囉，{{ current_user.nickname }}！👋</h2>
+        <p class="text-muted">今天是個美好的一天，來看看寢室/公寓有什麼新狀態吧！</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <div class="card p-2 bg-white shadow-sm border-0 d-inline-block text-start">
+            <span class="text-muted d-block" style="font-size: 0.8rem;"><i class="bi bi-house-door-fill me-1"></i>目前群組</span>
+            <span class="font-weight-bold fs-5 text-dark">{{ group.name }}</span>
+            <span class="badge bg-secondary ms-2" style="cursor: pointer;" onclick="navigator.clipboard.writeText('{{ group.invite_code }}'); alert('邀請碼已複製：{{ group.invite_code }}')">邀請碼: {{ group.invite_code }} <i class="bi bi-clipboard ms-1"></i></span>
+        </div>
+    </div>
+</div>
+
+<!-- 快速操作面板 -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('agreement.create_agreement') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-file-earmark-plus text-primary fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">公約提案</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('expense.create_expense') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-journal-plus text-success fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">記帳開支</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('electricity.list_bills') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-lightning text-warning fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">登錄電費</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('chore.create_chore') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-calendar-plus text-info fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">指派家事</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('reminder.send_reminder') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-chat-left-heart text-danger fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">發匿名提醒</span>
+        </a>
+    </div>
+    <div class="col-6 col-md-2">
+        <a href="{{ url_for('inventory.create_item') }}" class="card main-card text-center p-3 text-decoration-none h-100">
+            <i class="bi bi-plus-square text-secondary fs-2 mb-2"></i>
+            <span class="text-dark font-weight-bold" style="font-size: 0.9rem;">新增物資</span>
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- 未讀通知區 -->
+    <div class="col-md-6">
+        <div class="card main-card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="m-0 font-weight-bold"><i class="bi bi-bell-fill text-warning me-2"></i>未讀通知</h4>
+                {% if notifications %}
+                    <form action="{{ url_for('dashboard.read_all_notifications') }}" method="POST" class="m-0">
+                        <button type="submit" class="btn btn-link btn-sm text-decoration-none p-0 text-primary">一鍵已讀</button>
+                    </form>
+                {% endif %}
+            </div>
+            
+            <div class="list-group list-group-flush overflow-auto" style="max-height: 350px;">
+                {% if notifications %}
+                    {% for n in notifications %}
+                        <div class="list-group-item px-0 py-3 border-0 border-bottom">
+                            <div class="d-flex w-100 justify-content-between mb-1">
+                                <h6 class="mb-1 font-weight-bold text-dark">
+                                    {% if n.type == 'agreement' %}
+                                        <span class="badge bg-primary-subtle text-primary-emphasis me-1">公約</span>
+                                    {% elif n.type == 'expense' %}
+                                        <span class="badge bg-success-subtle text-success-emphasis me-1">財務</span>
+                                    {% elif n.type == 'electricity' %}
+                                        <span class="badge bg-warning-subtle text-warning-emphasis me-1">電費</span>
+                                    {% elif n.type == 'chore' %}
+                                        <span class="badge bg-info-subtle text-info-emphasis me-1">家事</span>
+                                    {% elif n.type == 'reminder' %}
+                                        <span class="badge bg-danger-subtle text-danger-emphasis me-1">黑臉</span>
+                                    {% elif n.type == 'inventory' %}
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis me-1">庫存</span>
+                                    {% endif %}
+                                    {{ n.title }}
+                                </h6>
+                                <small class="text-muted">{{ n.created_at }}</small>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size: 0.9rem;">{{ n.message }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-bell-slash text-muted fs-1 mb-2 d-block"></i>
+                        <span class="text-muted">目前沒有未讀通知，世界真和平！🕊️</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 待辦家事與警示區 -->
+    <div class="col-md-6">
+        <div class="card main-card p-4 mb-4">
+            <h4 class="mb-3 font-weight-bold"><i class="bi bi-calendar-week text-primary me-2"></i>待辦家事</h4>
+            
+            <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                {% if pending_chores %}
+                    {% for c in pending_chores %}
+                        <div class="list-group-item px-0 py-3 border-0 border-bottom d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1 font-weight-bold">{{ c.title }}</h6>
+                                <p class="mb-0 text-muted" style="font-size: 0.85rem;">
+                                    <i class="bi bi-clock me-1"></i>到期日：{{ c.due_date }}
+                                    {% if c.recurrence != 'once' %}
+                                        <span class="badge bg-light text-dark ms-1">
+                                            {% if c.recurrence == 'daily' %}每日{% elif c.recurrence == 'weekly' %}每週{% elif c.recurrence == 'monthly' %}每月{% endif %}循環
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div>
+                                <form action="{{ url_for('chore.complete_chore', chore_id=c.id) }}" method="POST" class="m-0">
+                                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                                        <i class="bi bi-check2-circle me-1"></i>完成
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-emoji-smile text-muted fs-1 mb-2 d-block"></i>
+                        <span class="text-muted">沒有分配給您的待辦家事喔！</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 庫存警示卡 -->
+        {% if low_stock_items %}
+            <div class="card border-danger bg-danger-subtle p-3 shadow-sm" style="border-radius: 16px;">
+                <h5 class="text-danger font-weight-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>物資庫存不足警報！</h5>
+                <div style="font-size: 0.9rem; color: #7f1d1d;">
+                    以下公用物資低於安全庫存：
+                    <ul class="mb-2 mt-1">
+                        {% for item in low_stock_items %}
+                            <li><strong>{{ item.name }}</strong> (剩餘 {{ item.quantity }} {{ item.unit }}，警戒線為 {{ item.min_quantity }} {{ item.unit }})</li>
+                        {% endfor %}
+                    </ul>
+                    <a href="{{ url_for('inventory.list_items') }}" class="btn btn-sm btn-danger px-3 py-1 font-weight-bold rounded-pill text-decoration-none">
+                        前往物資庫進行入庫補貨
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

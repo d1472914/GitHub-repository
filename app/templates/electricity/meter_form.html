@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}申報電表度數 - RoomieCo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('electricity.list_bills') }}" class="text-decoration-none text-warning">智慧電費</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('electricity.detail', bill_id=bill.id) }}" class="text-decoration-none text-warning">帳單詳情</a></li>
+                <li class="breadcrumb-item active" aria-current="page">申報度數</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card main-card p-4">
+            <h3 class="font-weight-bold text-dark mb-3"><i class="bi bi-speedometer text-warning me-2"></i>申報個人房間度數</h3>
+            <p class="text-muted">請查看您房間分電表的刻度，並輸入本期起迄度數以計算用電量。</p>
+            
+            <div class="alert bg-light border-0 mb-4" style="border-radius: 12px; font-size: 0.9rem;">
+                <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+                <strong>帳單計費期間：</strong> {{ bill.period_start }} ~ {{ bill.period_end }}
+            </div>
+            
+            <form action="{{ url_for('electricity.log_reading', bill_id=bill.id) }}" method="POST">
+                <div class="mb-3">
+                    <label for="start_reading" class="form-label font-weight-bold">本期起始度數 <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="number" step="0.1" class="form-control" id="start_reading" name="start_reading" 
+                               value="{{ start_reading if start_reading is not none else (reading.start_reading if reading else '') }}" 
+                               placeholder="0.0" min="0.0" required style="border-radius: 8px 0 0 8px;">
+                        <span class="input-group-text bg-light font-weight-bold text-muted">度</span>
+                    </div>
+                    <div class="form-text text-muted">本期開始時的分電表度數（通常是上期結束度數）。</div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="end_reading" class="form-label font-weight-bold">本期結束度數 <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="number" step="0.1" class="form-control" id="end_reading" name="end_reading" 
+                               value="{{ end_reading if end_reading is not none else (reading.end_reading if reading else '') }}" 
+                               placeholder="0.0" min="0.0" required style="border-radius: 8px 0 0 8px;">
+                        <span class="input-group-text bg-light font-weight-bold text-muted">度</span>
+                    </div>
+                    <div class="form-text text-muted">本期結束時的分電表度數。結束度數不得小於起始度數。</div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('electricity.detail', bill_id=bill.id) }}" class="btn btn-light w-25" style="border-radius: 10px; font-weight: 600;">
+                        取消
+                    </a>
+                    <button type="submit" class="btn btn-gradient-primary w-75">
+                        確認上報
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
