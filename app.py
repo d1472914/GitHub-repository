@@ -2,7 +2,11 @@ from app import create_app
 
 app = create_app()
 
+<<<<<<< D1483362
 if __name__ == '__main__':
+=======
+if __name__ == "__main__":
+>>>>>>> master
     app.run(debug=True, port=5000)
 from dotenv import load_dotenv
 import os

@@ -3,6 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宿舍共好 - 智慧電費</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-glass sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-gradient" href="{{ url_for('electricity.index') }}">宿舍共好</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-toggle="target" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link text-warning fw-bold" href="{{ url_for('electricity.estimate') }}">⚡ 即時電費估算</a>
+                    </li>
+                </ul>
     <title>{% block title %}室友共好系統{% endblock %}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -218,6 +239,13 @@
         </div>
     </nav>
 
+    <div class="container mt-4 mb-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show glass-card mb-4" role="alert" style="padding: 1rem 2rem;">
+                        {{ message }}
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
     <!-- Flashed Messages -->
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -235,6 +263,12 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     </div>
 
     <!-- Main Content -->
