@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}提醒收件匣 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="card-title text-primary mb-1"><i class="bi bi-mailbox"></i> 匿名提醒收件匣</h2>
+                    <p class="text-muted mb-0 small">您收到的所有室友匿名生活提醒，完全安全保密，發送者資訊已被系統徹底過濾。</p>
+                </div>
+                <a href="/reminders/send" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 發送提醒</a>
+            </div>
+
+            <!-- 收件清單 -->
+            <div class="d-flex flex-column gap-3">
+                {% if reminders %}
+                    {% for rem in reminders %}
+                        <div class="p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-secondary px-2.5 py-1">
+                                    {% if '噪音' in rem.category or '音量' in rem.category or '靜音' in rem.category %}🔊 噪音提醒
+                                    {% elif '環境' in rem.category or '衛生' in rem.category or '乾淨' in rem.category %}🧹 衛生提醒
+                                    {% elif '燈' in rem.category or '作息' in rem.category %}💡 作息提醒
+                                    {% else %}🤫 生活提醒
+                                    {% endif %}
+                                </span>
+                                <small class="text-muted">{{ rem.created_at }}</small>
+                            </div>
+                            <p class="mb-0 text-white-50" style="white-space: pre-wrap; line-height: 1.6;">{{ rem.message }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="display-5 text-muted mb-2">🤫</div>
+                        <h4 class="text-white-50">您的收件匣空空如也</h4>
+                        <p class="text-muted">太棒了！代表您的日常作息極度良好，深受室友們的喜愛與認可 🌟</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="mt-4 pt-4 border-top border-secondary border-opacity-25 text-center">
+                <p class="text-muted small mb-0"><i class="bi bi-shield-shaded"></i> 聲明：所有提醒均使用端到端匿名混淆，保護室友隱私與人際關係，請放心看待。</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

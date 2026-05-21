@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}登錄電表度數 - 宿舍共好{% block title_end %}{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="card-title text-danger mb-2"><i class="bi bi-clipboard2-pulse"></i> 登錄個人房間電表度數</h2>
+            <p class="text-muted small mb-4">本期電費帳單週期為：<strong>{{ bill.period_start }} ~ {{ bill.period_end }}</strong>。請至分電表查看並登錄您的期初與期末度數，以計算您的個人實際用電。</p>
+
+            <form action="/electricity/{{ bill.id }}/meter" method="POST">
+                <div class="row g-3 mb-4">
+                    <!-- 期初度數 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="start_reading">期初電表度數 (kWh)</label>
+                            <input type="number" step="0.01" min="0" id="start_reading" name="start_reading" class="form-control" placeholder="上次抄表度數" required>
+                        </div>
+                    </div>
+                    <!-- 期末度數 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="end_reading">期末電表度數 (kWh)</label>
+                            <input type="number" step="0.01" min="0" id="end_reading" name="end_reading" class="form-control" placeholder="本次抄表度數" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按鈕 -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/electricity/{{ bill.id }}" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-danger px-4"><i class="bi bi-send-fill"></i> 提交度數記錄</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

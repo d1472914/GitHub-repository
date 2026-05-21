@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}新增共同支出 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="card-title text-warning mb-2"><i class="bi bi-cash-stack"></i> 登記共同支出</h2>
+            <p class="text-muted small mb-4">輸入您的付款金額、選擇品項類別，並勾選需要共同分攤此筆費用的室友。</p>
+
+            <form action="/expenses" method="POST">
+                <!-- 項目名稱 -->
+                <div class="form-group mb-3">
+                    <label class="form-label" for="title">消費項目名稱</label>
+                    <input type="text" id="title" name="title" class="form-control" placeholder="例如：好市多衛生紙三箱、本月天然瓦斯費" required>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <!-- 金額 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="amount">實付金額 (TWD)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted">$</span>
+                                <input type="number" step="0.01" min="0.01" id="amount" name="amount" class="form-control" placeholder="請輸入金額" required>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 類別 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="category">費用類別</label>
+                            <select id="category" name="category" class="form-select form-control" required>
+                                <option value="" disabled selected>請選擇類別...</option>
+                                <option value="飲食餐飲">🍔 飲食餐飲</option>
+                                <option value="生活用品">🧴 生活用品</option>
+                                <option value="水電瓦斯">⚡ 水電瓦斯</option>
+                                <option value="租金規費">🏠 租金規費</option>
+                                <option value="其他雜支">✨ 其他雜支</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分攤成員選擇 -->
+                <div class="form-group mb-4">
+                    <label class="form-label mb-2"><i class="bi bi-people-fill text-info"></i> 勾選參與分攤的室友 (預設全體成員)</label>
+                    <div class="p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3">
+                        <div class="row g-3">
+                            {% for member in members %}
+                                <div class="col-6 col-sm-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="split_users[]" value="{{ member.id }}" id="user_{{ member.id }}" checked>
+                                        <label class="form-check-label text-white-50" for="user_{{ member.id }}">
+                                            {{ member.nickname }}
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按鈕 -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/expenses" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-warning text-dark px-4 fw-bold"><i class="bi bi-check-lg"></i> 確認記帳</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

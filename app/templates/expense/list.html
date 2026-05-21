@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}共同記帳本 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="card-title text-warning mb-1"><i class="bi bi-cash-coin"></i> 共同記帳本</h2>
+            <p class="text-muted mb-0 small">記錄宿舍或寢室的共同生活支出，由全體成員公平合理分攤。</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/expenses/balance" class="btn btn-outline-info"><i class="bi bi-wallet2"></i> 餘額與結算</a>
+            <a href="/expenses/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新增支出</a>
+        </div>
+    </div>
+
+    <!-- 支出記錄清單 -->
+    <div class="row g-4">
+        {% if expenses %}
+            {% for exp in expenses %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-secondary px-2.5 py-1">{{ exp.category }}</span>
+                                <span class="text-warning fw-bold fs-5 font-heading">${{ "%.2f"|format(exp.amount) }}</span>
+                            </div>
+                            <h4 class="h5 text-white mb-2 font-heading">{{ exp.title }}</h4>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-person-fill text-primary"></i> 付款人：<strong>{{ exp.payer }}</strong><br>
+                                <i class="bi bi-calendar3"></i> 記帳時間：{{ exp.created_at }}
+                            </p>
+                            
+                            <!-- 分攤明細 -->
+                            <div class="mt-3">
+                                <span class="text-white-50 small d-block mb-1 fw-bold">室友分攤進度：</span>
+                                <div class="d-flex flex-column gap-1 bg-dark bg-opacity-30 rounded p-2" style="max-height: 120px; overflow-y: auto;">
+                                    {% for split in exp.splits %}
+                                        <div class="d-flex justify-content-between align-items-center small">
+                                            <span class="text-muted">{{ split.nickname }}</span>
+                                            <div>
+                                                <span class="text-white-50 me-2">${{ "%.2f"|format(split.amount) }}</span>
+                                                {% if split.is_settled %}
+                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-10 py-0.5">已結清</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-10 py-0.5">未結清</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-credit-card"></i></div>
+                <h4 class="text-white-50">尚無共同支出記錄</h4>
+                <p class="text-muted">點擊右上角按鈕新增您的第一筆日常共同支出！</p>
+                <a href="/expenses/new" class="btn btn-primary mt-2 px-4"><i class="bi bi-plus-lg"></i> 新增支出</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

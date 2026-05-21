@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}群組設定與室友管理 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="card-title text-info mb-4"><i class="bi bi-gear-fill"></i> 群組設定與成員管理</h2>
+            
+            <!-- 資訊面板 -->
+            <div class="bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 p-4 mb-4">
+                <h3 class="h5 text-white mb-3"><i class="bi bi-info-circle text-primary me-2"></i> 群組基本資訊</h3>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <span class="text-muted d-block small">群組名稱</span>
+                        <strong class="text-white fs-5">{{ group.name }}</strong>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="text-muted d-block small">專屬邀請碼</span>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="badge bg-primary fs-6 font-heading px-3 py-2">{{ group.invite_code }}</span>
+                            <button class="btn btn-sm btn-outline-secondary py-1" onclick="navigator.clipboard.writeText('{{ group.invite_code }}'); alert('邀請碼已複製到剪貼簿！');">
+                                <i class="bi bi-clipboard"></i> 複製
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 修改群組名稱表單 -->
+            <form action="/group/settings" method="POST" class="mb-5">
+                <h3 class="h5 text-white mb-3"><i class="bi bi-pencil-square text-warning me-2"></i> 修改群組資訊</h3>
+                <div class="form-group mb-3">
+                    <label class="form-label" for="name">群組名稱</label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ group.name }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> 儲存設定</button>
+            </form>
+
+            <!-- 室友成員列表 -->
+            <div>
+                <h3 class="h5 text-white mb-3"><i class="bi bi-people text-info me-2"></i> 室友成員列表 (共 {{ members|length }} 人)</h3>
+                <div class="list-group list-group-flush bg-transparent">
+                    {% for member in members %}
+                        <div class="list-group-item bg-transparent text-white border-bottom border-secondary border-opacity-25 py-3 px-0 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold text-white-50">{{ member.nickname }}</span>
+                                <span class="text-muted small ms-2">({{ member.email }})</span>
+                            </div>
+                            <div>
+                                {% if member.role == 'admin' %}
+                                    <span class="badge bg-danger rounded-pill px-3"><i class="bi bi-shield-lock"></i> 群組建立者</span>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill px-3"><i class="bi bi-person"></i> 室友</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

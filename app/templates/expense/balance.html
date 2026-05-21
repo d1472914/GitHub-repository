@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}室友餘額總覽與結算 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h2 class="card-title text-info mb-1"><i class="bi bi-wallet2"></i> 室友餘額總覽與結算</h2>
+                    <p class="text-muted mb-0 small">此處顯示您與每位室友之間未結清的淨額關係。綠色代表室友欠您，紅色代表您欠室友。</p>
+                </div>
+                <a href="/expenses" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回記帳本</a>
+            </div>
+
+            <!-- 餘額列表 -->
+            <div class="d-flex flex-column gap-3">
+                {% if balances %}
+                    {% for bal in balances %}
+                        <div class="p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-secondary bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                    <i class="bi bi-person text-white fs-4"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-white fs-5 font-heading">{{ bal.nickname }}</strong>
+                                    {% if bal.balance > 0 %}
+                                        <span class="text-muted d-block small">應支付您</span>
+                                    {% elif bal.balance < 0 %}
+                                        <span class="text-muted d-block small">您應支付他/她</span>
+                                    {% else %}
+                                        <span class="text-muted d-block small">無欠款關係</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- 淨額數字與按鈕 -->
+                            <div class="d-flex align-items-center gap-3">
+                                {% if bal.balance > 0 %}
+                                    <span class="text-success fw-bold fs-4 font-heading">+${{ "%.2f"|format(bal.balance) }}</span>
+                                    <form action="/expenses/settle" method="POST" class="m-0">
+                                        <input type="hidden" name="settle_with_user_id" value="{{ bal.user_id }}">
+                                        <button type="submit" class="btn btn-sm btn-success px-3 rounded-pill"><i class="bi bi-check-circle"></i> 標記結清</button>
+                                    </form>
+                                {% elif bal.balance < 0 %}
+                                    <span class="text-danger fw-bold fs-4 font-heading">-${{ "%.2f"|format(bal.balance|abs) }}</span>
+                                    <form action="/expenses/settle" method="POST" class="m-0">
+                                        <input type="hidden" name="settle_with_user_id" value="{{ bal.user_id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger px-3 rounded-pill"><i class="bi bi-check-circle"></i> 我已還款</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted fs-5">已結清 🤝</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="display-5 text-muted mb-2">🤝</div>
+                        <p class="text-muted mb-0">群組目前尚無未結清的帳務，大家合作無間！</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

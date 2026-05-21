@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}隱形家事管家 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="card-title text-info mb-1"><i class="bi bi-broom"></i> 隱形家事管家</h2>
+            <p class="text-muted mb-0 small">輪流分擔生活環境整潔，共同維護舒適的居住空間。</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/chores/calendar" class="btn btn-outline-info"><i class="bi bi-calendar3"></i> 輪值日曆</a>
+            <a href="/chores/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新增任務</a>
+        </div>
+    </div>
+
+    <!-- 任務清單 -->
+    <div class="row g-4">
+        {% if chores %}
+            {% for chore in chores %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-secondary px-2.5 py-1">
+                                    {% if chore.recurrence == 'once' %}單次任務
+                                    {% elif chore.recurrence == 'daily' %}每日輪替
+                                    {% elif chore.recurrence == 'weekly' %}每週輪替
+                                    {% elif chore.recurrence == 'monthly' %}每月輪替
+                                    {% else %}定期任務
+                                    {% endif %}
+                                </span>
+                                {% if chore.status == 'completed' %}
+                                    <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 rounded-pill px-3 py-1"><i class="bi bi-check-circle-fill"></i> 已完成</span>
+                                {% else %}
+                                    <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-1"><i class="bi bi-hourglass-split"></i> 待處理</span>
+                                {% endif %}
+                            </div>
+                            
+                            <h4 class="h5 text-white mb-2 font-heading">{{ chore.title }}</h4>
+                            {% if chore.description %}
+                                <p class="text-muted small mb-3">{{ chore.description }}</p>
+                            {% endif %}
+                            
+                            <div class="p-2 bg-dark bg-opacity-20 border border-secondary border-opacity-10 rounded-3 mb-3 small">
+                                <div class="mb-1 text-white-50"><i class="bi bi-person-circle text-info me-2"></i>負責人：<strong>{{ chore.assigned_to_name }}</strong></div>
+                                <div class="text-danger-custom"><i class="bi bi-clock text-danger me-2"></i>期限：{{ chore.due_date }}</div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">發起人：{{ chore.creator_name }}</span>
+                            <div class="d-flex gap-1">
+                                {% if chore.status == 'pending' and chore.assigned_to == session.get('user_id') %}
+                                    <form action="/chores/{{ chore.id }}/complete" method="POST" class="m-0">
+                                        <button type="submit" class="btn btn-sm btn-success px-3 rounded-pill"><i class="bi bi-check-lg"></i> 完成</button>
+                                    </form>
+                                {% endif %}
+                                <a href="/chores/{{ chore.id }}/edit" class="btn btn-sm btn-outline-secondary px-2.5 rounded-pill"><i class="bi bi-pencil-square"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-trash3"></i></div>
+                <h4 class="text-white-50">目前沒有登錄的家事任務</h4>
+                <p class="text-muted">快去為宿舍安排第一個整潔輪值任務吧！</p>
+                <a href="/chores/new" class="btn btn-primary mt-2 px-4"><i class="bi bi-plus-lg"></i> 新增任務</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
