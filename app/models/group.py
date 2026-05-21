@@ -106,6 +106,12 @@ def update(group_id, data):
             conn.commit()
             return cursor.rowcount > 0
     except sqlite3.Error as e:
+        logging.error(f"Error deleting group: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
         print(f"Error in update group ({group_id}): {e}")
         return False
 

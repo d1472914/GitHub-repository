@@ -111,6 +111,25 @@ def get_stats_by_group(group_id):
     GROUP BY category
     """
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql, (group_id,))
+        rows = cursor.fetchall()
+        
+        # 初始化預設三個類別的統計
+        stats = {'noise': 0, 'hygiene': 0, 'other': 0}
+        for row in rows:
+            cat = row['category']
+            stats[cat] = row['count']
+        return stats
+    except sqlite3.Error as e:
+        logging.error(f"Error getting group reminder stats: {e}")
+        return {}
+    finally:
+        if conn:
+            conn.close()
+
+
         with get_db_connection() as conn:
             return conn.execute(sql, (group_id,)).fetchall()
     except sqlite3.Error as e:

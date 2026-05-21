@@ -9,6 +9,12 @@ load_dotenv()
 app = create_app()
 
 if __name__ == '__main__':
+    # Run server on port 5000
+    app.run(
+        host='0.0.0.0', 
+        port=5000, 
+        debug=os.environ.get('FLASK_DEBUG', 'True') == 'True'
+    )
     # 從環境變數讀取執行參數，或使用預設值
     host = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
     port = int(os.environ.get('FLASK_RUN_PORT', 5000))
