@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}群組設定 - 室友共好{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-5 mb-4">
+        <!-- Group info and renaming -->
+        <div class="card card-custom shadow border-0 mb-4">
+            <div class="card-header card-header-custom">
+                <i class="bi bi-gear-fill me-2 text-primary"></i>群組基本資訊
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-4 text-center py-3 bg-light rounded-3">
+                    <span class="text-muted small d-block">群組邀請碼</span>
+                    <h2 class="fw-bold font-monospace text-primary text-uppercase my-1">{{ group.invite_code }}</h2>
+                    <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>分享此邀請碼給您的室友以加入群組</span>
+                </div>
+                
+                <form action="{{ url_for('group.settings') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label font-monospace small text-muted">修改群組名稱</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ group.name }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-gradient-primary btn-sm px-4">
+                        <i class="bi bi-save me-1"></i>儲存變更
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <!-- Roommates list -->
+        <div class="card card-custom shadow border-0">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people-fill me-2 text-primary"></i>室友成員清單</span>
+                <span class="badge bg-primary rounded-pill">{{ members|length }} 人</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>暱稱</th>
+                                <th>Email</th>
+                                <th>系統角色</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for member in members %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <i class="bi bi-person-fill text-muted me-1"></i>
+                                        <strong>{{ member.nickname }}</strong>
+                                        {% if member.id == current_user.id %}
+                                            <span class="badge bg-indigo text-indigo bg-opacity-10 font-monospace ms-1" style="color: #4f46e5; background-color: #e0e7ff;">我自己</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="font-monospace small text-muted">{{ member.email }}</td>
+                                    <td>
+                                        {% if member.role == 'admin' %}
+                                            <span class="badge bg-danger"><i class="bi bi-shield-check me-1"></i>管理者</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">一般室友</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

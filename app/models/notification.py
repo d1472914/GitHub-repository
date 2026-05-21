@@ -1,95 +1,134 @@
-"""
-Notification Model — 站內通知
-儲存系統發送給使用者的通知訊息
-"""
+import sqlite3
+import os
 
-from datetime import datetime
-from app.models import db
+def get_db_connection():
+    """建立並回傳 SQLite 資料庫連線，設定 Row factory 並啟用外鍵約束"""
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    db_path = os.path.join(base_dir, 'instance', 'database.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
 
-
-class Notification(db.Model):
-    __tablename__ = 'notifications'
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
-    type = db.Column(db.String(30), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    message = db.Column(db.Text, nullable=True)
-    is_read = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    # 關聯
-    user = db.relationship('User', backref='notifications')
-    group = db.relationship('Group', backref='notifications')
-
-    def __repr__(self):
-        return f'<Notification {self.title} ({self.type})>'
-
-    # ===== CRUD 方法 =====
-
-    @classmethod
-    def create(cls, user_id, group_id, type, title, message=None):
-        """建立新通知"""
-        notification = cls(
-            user_id=user_id,
-            group_id=group_id,
-            type=type,
-            title=title,
-            message=message
+def create(data):
+    """
+    新增一筆站內通知記錄
+    :param data: dict, 包含 user_id, group_id, type, title, message, is_read
+    :return: int, 新增記錄的 ID
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO notifications (user_id, group_id, type, title, message, is_read) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                data.get('user_id'),
+                data.get('group_id'),
+                data.get('type'),
+                data.get('title'),
+                data.get('message'),
+                data.get('is_read', 0)
+            )
         )
-        db.session.add(notification)
-        db.session.commit()
-        return notification
+        conn.commit()
+        new_id = cursor.lastrowid
+        conn.close()
+        return new_id
+    except sqlite3.Error as e:
+        print(f"Database error in notification.create: {e}")
+        raise e
 
-    @classmethod
-    def get_all(cls):
-        """取得所有通知"""
-        return cls.query.all()
+def get_all():
+    """
+    取得所有站內通知記錄
+    :return: list of sqlite3.Row
+    """
+    try:
+        conn = get_db_connection()
+        rows = conn.execute("SELECT * FROM notifications").fetchall()
+        conn.close()
+        return rows
+    except sqlite3.Error as e:
+        print(f"Database error in notification.get_all: {e}")
+        raise e
 
-    @classmethod
-    def get_by_id(cls, notification_id):
-        """依 ID 取得通知"""
-        return cls.query.get(notification_id)
+def get_by_id(notification_id):
+    """
+    根據 ID 取得單筆站內通知記錄
+    :param notification_id: int, 通知 ID
+    :return: sqlite3.Row or None
+    """
+    try:
+        conn = get_db_connection()
+        row = conn.execute("SELECT * FROM notifications WHERE id = ?", (notification_id,)).fetchone()
+        conn.close()
+        return row
+    except sqlite3.Error as e:
+        print(f"Database error in notification.get_by_id: {e}")
+        raise e
 
-    @classmethod
-    def get_by_user(cls, user_id):
-        """取得某使用者的所有通知（由新到舊）"""
-        return cls.query.filter_by(user_id=user_id)\
-            .order_by(cls.created_at.desc()).all()
+def get_unread_by_user(user_id):
+    """
+    取得某使用者的所有未讀站內通知
+    :param user_id: int, 使用者 ID
+    :return: list of sqlite3.Row
+    """
+    try:
+        conn = get_db_connection()
+        rows = conn.execute(
+            "SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC",
+            (user_id,)
+        ).fetchall()
+        conn.close()
+        return rows
+    except sqlite3.Error as e:
+        print(f"Database error in notification.get_unread_by_user: {e}")
+        raise e
 
-    @classmethod
-    def get_unread_by_user(cls, user_id):
-        """取得某使用者所有未讀通知"""
-        return cls.query.filter_by(user_id=user_id, is_read=False)\
-            .order_by(cls.created_at.desc()).all()
+def update(notification_id, data):
+    """
+    更新站內通知記錄（如標記為已讀）
+    :param notification_id: int, 通知 ID
+    :param data: dict, 包含欲更新的欄位
+    :return: bool, 是否更新成功
+    """
+    try:
+        conn = get_db_connection()
+        fields = []
+        values = []
+        for key in ['user_id', 'group_id', 'type', 'title', 'message', 'is_read']:
+            if key in data:
+                fields.append(f"{key} = ?")
+                values.append(data[key])
+        
+        if not fields:
+            conn.close()
+            return False
+            
+        values.append(notification_id)
+        sql = f"UPDATE notifications SET {', '.join(fields)} WHERE id = ?"
+        cursor = conn.execute(sql, values)
+        conn.commit()
+        rowcount = cursor.rowcount
+        conn.close()
+        return rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error in notification.update: {e}")
+        raise e
 
-    @classmethod
-    def get_unread_count(cls, user_id):
-        """取得某使用者未讀通知數量"""
-        return cls.query.filter_by(user_id=user_id, is_read=False).count()
-
-    def mark_as_read(self):
-        """標記為已讀"""
-        self.is_read = True
-        db.session.commit()
-
-    @classmethod
-    def mark_all_as_read(cls, user_id):
-        """將某使用者所有通知標記為已讀"""
-        cls.query.filter_by(user_id=user_id, is_read=False)\
-            .update({'is_read': True})
-        db.session.commit()
-
-    def update(self, **kwargs):
-        """更新通知"""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-        db.session.commit()
-        return self
-
-    def delete(self):
-        """刪除通知"""
-        db.session.delete(self)
-        db.session.commit()
+def delete(notification_id):
+    """
+    刪除站內通知記錄
+    :param notification_id: int, 通知 ID
+    :return: bool, 是否刪除成功
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.execute("DELETE FROM notifications WHERE id = ?", (notification_id,))
+        conn.commit()
+        rowcount = cursor.rowcount
+        conn.close()
+        return rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error in notification.delete: {e}")
+        raise e

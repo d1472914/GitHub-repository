@@ -1,9 +1,22 @@
+from dotenv import load_dotenv
+import os
+from app import create_app
+
+# Load environment variables from .env if it exists
+load_dotenv()
+
+app = create_app()
+
+if __name__  '__main__':
+    # Run server on port 5000
+    app.run(host='0.0.0.0', port=5000, debug=os.environ.get('FLASK_DEBUG', 'True')  'True')
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_key_for_development'
+app.secret_key  'super_secret_key_for_development'
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'habits.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -54,5 +67,6 @@ def index():
     habits = Habit.query.all()
     return render_template('index.html', habits=habits)
 
-if __name__ == '__main__':
+if __name__  '__main__':
     app.run(debug=True)
+
