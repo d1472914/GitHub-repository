@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+<<<<<<< HEAD
 {% block title %}發送匿名生活提醒 - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -77,4 +78,62 @@ function applyTemplate(category, text) {
     }
 }
 </script>
+=======
+{% block title %}匿名生活提醒 - 室友共好{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card card-custom border-0 shadow">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bell-fill text-danger me-2"></i>匿名生活提醒 (友善黑臉)</span>
+                <!-- if current user is admin, show button to see stats -->
+                <a href="{{ url_for('reminder.inbox') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-mailbox me-1"></i>我的收件匣
+                </a>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-warning border-0 rounded-3 small mb-4">
+                    <i class="bi bi-shield-lock-fill me-1"></i>
+                    <strong>隱私聲明</strong>：您的身分將會完全保密。被提醒者只會收到系統發出的通知與您所填寫的提醒內容，絕不透露發送者姓名。
+                </div>
+                
+                <form action="{{ url_for('reminder.send_reminder') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="receiver_id" class="form-label font-monospace small text-muted">選擇被提醒的室友</label>
+                        <select class="form-select" id="receiver_id" name="receiver_id" required>
+                            <option value="" disabled selected>-- 請選擇室友 --</option>
+                            {% for r in roommates %}
+                                <option value="{{ r.id }}">{{ r.nickname }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label font-monospace small text-muted">提醒類別</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="" disabled selected>-- 請選擇類別 --</option>
+                            <option value="noise">🔊 噪音管理 (半夜說話大聲、敲鍵盤音量)</option>
+                            <option value="hygiene">🧹 衛生清潔 (個人垃圾、用完碗盤未洗)</option>
+                            <option value="other">📝 其他約定 (電器未關、物品隨意擺放)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="message" class="form-label font-monospace small text-muted">溫和的提醒內容</label>
+                        <textarea class="form-control" id="message" name="message" rows="4" placeholder="請保持溫和客觀的語氣，例如：親愛的室友，昨天晚上十一點後的鍵盤敲擊聲有點大，希望可以稍微小聲一點，感謝你的體諒！" required></textarea>
+                        <div class="form-text mt-1 text-muted">
+                            <i class="bi bi-hourglass-split me-1"></i>系統限制：<strong>對同一位室友 1 小時內限發送 1 次匿名提醒</strong>，防止惡意洗板。
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-gradient-primary w-100 py-2.5 rounded-3">
+                        <i class="bi bi-send-fill me-1"></i>由系統匿名發送提醒
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+>>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
 {% endblock %}

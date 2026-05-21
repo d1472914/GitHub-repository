@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+<<<<<<< HEAD
 {% block title %}{% if agreement %}編輯公約{% else %}新增公約提案{% endif %} - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -55,6 +56,59 @@
                     </button>
                 </div>
             </form>
+=======
+{% block title %}
+    {% if agreement %}編輯公約 - 室友共好{% else %}提案新公約 - 室友共好{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card card-custom border-0 shadow">
+            <div class="card-header card-header-custom">
+                <i class="bi bi-file-earmark-plus-fill text-primary me-2"></i>
+                {% if agreement %}編輯公約「{{ agreement.title }}」{% else %}提案新生活公約{% endif %}
+            </div>
+            <div class="card-body p-4">
+                <form action="{% if agreement %}{{ url_for('agreement.update_agreement', id=agreement.id) }}{% else %}{{ url_for('agreement.create_agreement') }}{% endif %}" method="POST">
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label font-monospace small text-muted">公約標題</label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="例如：禁止半夜大聲喧嘩、垃圾輪流清理" value="{{ agreement.title if agreement else '' }}" required autocomplete="off">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label font-monospace small text-muted">公約類別</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="" disabled {% if not agreement %}selected{% endif %}>--- 請選擇公約類別 ---</option>
+                            <option value="noise" {% if agreement and agreement.category == 'noise' %}selected{% endif %}>🔊 噪音管理</option>
+                            <option value="hygiene" {% if agreement and agreement.category == 'hygiene' %}selected{% endif %}>🧹 衛生環境</option>
+                            <option value="visitor" {% if agreement and agreement.category == 'visitor' %}selected{% endif %}>👥 訪客規定</option>
+                            <option value="other" {% if agreement and agreement.category == 'other' %}selected{% endif %}>📝 其他類別</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="content" class="form-label font-monospace small text-muted">公約條文內容</label>
+                        <textarea class="form-control" id="content" name="content" rows="6" placeholder="請詳細列出公約的具體規定與實施細則..." required>{{ agreement.content if agreement else '' }}</textarea>
+                        {% if agreement %}
+                            <div class="form-text text-warning mt-2">
+                                <i class="bi bi-exclamation-circle me-1"></i>注意：修改公約後會重新將狀態設定為「審核中」，室友需要重新同意此版本。
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{% if agreement %}{{ url_for('agreement.detail_agreement', id=agreement.id) }}{% else %}{{ url_for('agreement.list_agreements') }}{% endif %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill hover-lift">
+                            <i class="bi bi-x-circle me-1"></i>取消
+                        </a>
+                        <button type="submit" class="btn btn-gradient-primary btn-sm px-4 rounded-pill hover-lift">
+                            <i class="bi bi-check-circle-fill me-1"></i>{% if agreement %}確認更新{% else %}送出提案{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+>>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
         </div>
     </div>
 </div>

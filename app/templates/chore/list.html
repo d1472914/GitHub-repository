@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+<<<<<<< HEAD
 {% block title %}隱形家事管家 - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -69,6 +70,104 @@
                 <h4 class="text-white-50">目前沒有登錄的家事任務</h4>
                 <p class="text-muted">快去為宿舍安排第一個整潔輪值任務吧！</p>
                 <a href="/chores/new" class="btn btn-primary mt-2 px-4"><i class="bi bi-plus-lg"></i> 新增任務</a>
+=======
+{% block title %}家務輪值 - 室友共好{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-sm-6">
+        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-calendar-check text-info me-2"></i>家務輪值工作表</h2>
+        <p class="text-muted mb-0">指派家務並排程輪值工作</p>
+    </div>
+    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
+        <a href="{{ url_for('chore.calendar') }}" class="btn btn-outline-info rounded-pill px-4 me-2 hover-lift">
+            <i class="bi bi-calendar3 me-1"></i>日曆檢視
+        </a>
+        <a href="{{ url_for('chore.new_chore') }}" class="btn btn-gradient-secondary rounded-pill px-4 hover-lift" style="background: var(--secondary-gradient);">
+            <i class="bi bi-plus-lg me-1"></i>新增任務
+        </a>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow">
+    <div class="card-body p-4">
+        {% if chores %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 25%">家事任務</th>
+                            <th style="width: 15%">到期日</th>
+                            <th style="width: 15%">負責室友</th>
+                            <th style="width: 10%">重複週期</th>
+                            <th style="width: 10%">狀態</th>
+                            <th style="width: 20%" class="text-end">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in chores %}
+                            <tr class="{% if c.status == 'completed' %}table-light opacity-75{% endif %}">
+                                <td class="font-monospace text-muted">{{ loop.index }}</td>
+                                <td>
+                                    <span class="fw-semibold text-dark {% if c.status == 'completed' %}text-decoration-line-through{% endif %}">{{ c.title }}</span>
+                                    {% if c.description %}
+                                        <small class="text-muted d-block mt-0.5">{{ c.description }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="font-monospace {% if c.status == 'pending' and c.due_date < datetime %}text-danger{% endif %}">
+                                    {{ c.due_date }}
+                                </td>
+                                <td>
+                                    <i class="bi bi-person-fill text-muted me-1"></i>
+                                    <strong>{{ c.assigned_to_name }}</strong>
+                                </td>
+                                <td>
+                                    {% if c.recurrence == 'once' %}
+                                        <span class="badge bg-light text-dark">單次</span>
+                                    {% elif c.recurrence == 'daily' %}
+                                        <span class="badge bg-info bg-opacity-10 text-info">每日</span>
+                                    {% elif c.recurrence == 'weekly' %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary">每週</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ c.recurrence }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.status == 'completed' %}
+                                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>已完成</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>進行中</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        {% if c.status == 'pending' and c.assigned_to_id == current_user.id %}
+                                            <form action="{{ url_for('chore.complete_chore', id=c.id) }}" method="POST">
+                                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 hover-lift">
+                                                    標記完成
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <a href="{{ url_for('chore.edit_chore', id=c.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 hover-lift">
+                                            編輯
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-calendar-check"></i></div>
+                <h5 class="text-muted mb-1">目前尚無排定任何家事</h5>
+                <p class="text-muted small mb-4">今天房間很髒嗎？快來指派一個家務任務吧！</p>
+                <a href="{{ url_for('chore.new_chore') }}" class="btn btn-gradient-secondary rounded-pill px-4 hover-lift" style="background: var(--secondary-gradient);">
+                    <i class="bi bi-plus-lg me-1"></i>新增任務
+                </a>
+>>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
             </div>
         {% endif %}
     </div>

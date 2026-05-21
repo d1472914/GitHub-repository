@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}共同物資庫存 - Antigravity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>共同物資庫存</h1>
+    <p class="subtitle">管理與追蹤宿舍共用物品，不再為誰該買衛生紙吵架。</p>
+    <div class="header-actions">
+        <button class="btn btn-primary" id="btn-add-item">
+            <i data-lucide="plus"></i> 新增物資
+        </button>
+    </div>
+</div>
+
+<div class="inventory-grid">
+    <!-- Mock Items -->
+    <div class="inventory-card">
+        <div class="card-icon"><i data-lucide="package"></i></div>
+        <div class="card-info">
+            <h3>抽取式衛生紙</h3>
+            <p class="status low">低庫存 (剩餘 2 包)</p>
+        </div>
+        <button class="btn btn-outline">補貨</button>
+    </div>
+
+    <div class="inventory-card">
+        <div class="card-icon"><i data-lucide="droplets"></i></div>
+        <div class="card-info">
+            <h3>洗碗精</h3>
+            <p class="status good">庫存充足 (剩餘 1 瓶)</p>
+        </div>
+        <button class="btn btn-outline">補貨</button>
+    </div>
+
+    <div class="inventory-card">
+        <div class="card-icon"><i data-lucide="trash-2"></i></div>
+        <div class="card-info">
+            <h3>專用垃圾袋</h3>
+            <p class="status out">已耗盡</p>
+        </div>
+        <button class="btn btn-outline">補貨</button>
+    </div>
+</div>
+
+<!-- Version Lock Modal Backdrop -->
+<div id="version-lock-modal" class="modal-backdrop hidden">
+    <div class="modal-container glass-effect">
+        <div class="modal-header warning">
+            <div class="icon-container">
+                <i data-lucide="alert-triangle"></i>
+            </div>
+            <h2>系統同步通知</h2>
+        </div>
+        <div class="modal-body">
+            <p class="english-prompt">"This version of Antigravity is no longer supported. Please upgrade to receive the latest features."</p>
+            
+            <div class="reason-box">
+                <h4>為什麼需要升級？</h4>
+                <p>為了確保室友間的「物資水位紀錄」精準同步（例如：衛生紙、公用清潔劑的剩餘量），並啟用最新的「一鍵勾選採買」自動提醒功能，請立即進行版本更新。</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary btn-block" onclick="window.location.reload();">
+                <i data-lucide="refresh-cw"></i> 立即更新
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
+{% endblock %}
