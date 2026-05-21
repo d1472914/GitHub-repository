@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}提醒收件匣 - 室友共好{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-sm-6">
+        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-mailbox text-primary me-2"></i>我的提醒收件匣</h2>
+        <p class="text-muted mb-0">查看室友們向您提出的匿名生活改善建議</p>
+    </div>
+    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
+        <!-- if current user is admin/creator, show stats button -->
+        {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('reminder.stats') }}" class="btn btn-outline-danger rounded-pill px-4 me-2 hover-lift">
+                <i class="bi bi-bar-chart-fill me-1"></i>統計摘要
+            </a>
+        {% endif %}
+        <a href="{{ url_for('reminder.send_form') }}" class="btn btn-gradient-primary rounded-pill px-4 hover-lift">
+            <i class="bi bi-send-fill me-1"></i>發送提醒
+        </a>
+    </div>
+</div>
+
+<div class="card card-custom border-0 shadow">
+    <div class="card-body p-4">
+        {% if reminders %}
+            <div class="list-group list-group-flush">
+                {% for r in reminders %}
+                    <div class="list-group-item px-0 py-4 border-0 border-bottom">
+                        <div class="d-flex w-100 justify-content-between mb-2">
+                            <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-1.5 rounded-pill small">
+                                <i class="bi bi-info-circle me-1"></i>分類：{{ r.category_display }}
+                            </span>
+                            <small class="text-muted font-monospace">{{ r.created_at }}</small>
+                        </div>
+                        <p class="mb-1 text-dark fs-6 bg-light p-3 rounded-3" style="white-space: pre-line;">{{ r.message }}</p>
+                        <small class="text-muted"><i class="bi bi-shield-check me-1"></i>發送者身分已加密保護</small>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-mailbox-flag"></i></div>
+                <h5 class="text-muted mb-1">您的收件匣空空如也</h5>
+                <p class="text-muted small mb-0">太棒了！室友目前沒有向您提出生活提醒，請繼續保持良好的宿舍習慣。</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
