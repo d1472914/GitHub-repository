@@ -1,111 +1,66 @@
 {% extends "base.html" %}
 
-{% block title %}開支記帳 - 室友共好{% endblock %}
+{% block title %}共同記帳本 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-center">
-    <div class="col-sm-6">
-        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-cash-coin text-success me-2"></i>共用開支帳本</h2>
-        <p class="text-muted mb-0">登記共同花費並進行公平分攤</p>
+<div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="card-title text-warning mb-1"><i class="bi bi-cash-coin"></i> 共同記帳本</h2>
+            <p class="text-muted mb-0 small">記錄宿舍或寢室的共同生活支出，由全體成員公平合理分攤。</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/expenses/balance" class="btn btn-outline-info"><i class="bi bi-wallet2"></i> 餘額與結算</a>
+            <a href="/expenses/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i> 新增支出</a>
+        </div>
     </div>
-    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
-        <a href="{{ url_for('expense.balance') }}" class="btn btn-outline-success rounded-pill px-4 me-2 hover-lift">
-            <i class="bi bi-wallet2 me-1"></i>餘額與結算
-        </a>
-        <a href="{{ url_for('expense.new_expense') }}" class="btn btn-gradient-success rounded-pill px-4 hover-lift">
-            <i class="bi bi-plus-lg me-1"></i>登記消費
-        </a>
-    </div>
-</div>
 
-<div class="card card-custom border-0 shadow">
-    <div class="card-body p-4">
+    <!-- 支出記錄清單 -->
+    <div class="row g-4">
         {% if expenses %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 5%">#</th>
-                            <th style="width: 15%">消費時間</th>
-                            <th style="width: 25%">消費項目</th>
-                            <th style="width: 15%">類別</th>
-                            <th style="width: 15%">金額</th>
-                            <th style="width: 15%">付款人</th>
-                            <th style="width: 10%">分攤明細</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for e in expenses %}
-                            <tr>
-                                <td class="font-monospace text-muted">{{ loop.index }}</td>
-                                <td class="font-monospace small text-muted">{{ e.created_at }}</td>
-                                <td>
-                                    <span class="fw-semibold text-dark">{{ e.title }}</span>
-                                </td>
-                                <td>
-                                    {% if e.category == 'daily_goods' %}
-                                        <span class="badge bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-bag me-1"></i>日常物資</span>
-                                    {% elif e.category == 'rent' %}
-                                        <span class="badge bg-primary bg-opacity-10 text-primary"><i class="bi bi-house me-1"></i>房屋房租</span>
-                                    {% elif e.category == 'water_electricity' %}
-                                        <span class="badge bg-warning bg-opacity-10 text-warning text-dark"><i class="bi bi-lightning-charge me-1"></i>水電瓦斯</span>
-                                    {% else %}
-                                        <span class="badge bg-light text-dark"><i class="bi bi-tag me-1"></i>{{ e.category or '未分類' }}</span>
-                                    {% endif %}
-                                </td>
-                                <td class="font-monospace fw-bold text-success">${{ "{:,.2f}".format(e.amount) }}</td>
-                                <td>
-                                    <i class="bi bi-person-fill text-muted me-1"></i>
-                                    {{ e.paid_by_name }}
-                                </td>
-                                <td>
-                                    <!-- Tooltip/Popover or Popover modal showing roommates split -->
-                                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" data-bs-toggle="modal" data-bs-target="#splitModal{{ e.id }}">
-                                        查看分攤 ({{ e.splits|length }}人)
-                                    </button>
-                                    
-                                    <!-- Modal -->
-                                    <div class="modal fade" id="splitModal{{ e.id }}" tabindex="-1" aria-labelledby="splitModalLabel{{ e.id }}" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                                            <div class="modal-content border-0 shadow">
-                                                <div class="modal-header bg-light">
-                                                    <h6 class="modal-title fw-bold" id="splitModalLabel{{ e.id }}"><i class="bi bi-people me-1"></i>分攤明細</h6>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body p-3">
-                                                    <ul class="list-group list-group-flush">
-                                                        {% for s in e.splits %}
-                                                            <li class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
-                                                                <span class="small">{{ s.nickname }}</span>
-                                                                <div>
-                                                                    <span class="font-monospace small fw-bold me-2">${{ "{:,.2f}".format(s.amount) }}</span>
-                                                                    {% if s.is_settled %}
-                                                                        <span class="badge bg-success bg-opacity-10 text-success small">已結清</span>
-                                                                    {% else %}
-                                                                        <span class="badge bg-warning bg-opacity-10 text-warning text-dark small">未結清</span>
-                                                                    {% endif %}
-                                                                </div>
-                                                            </li>
-                                                        {% endfor %}
-                                                    </ul>
-                                                </div>
+            {% for exp in expenses %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-secondary px-2.5 py-1">{{ exp.category }}</span>
+                                <span class="text-warning fw-bold fs-5 font-heading">${{ "%.2f"|format(exp.amount) }}</span>
+                            </div>
+                            <h4 class="h5 text-white mb-2 font-heading">{{ exp.title }}</h4>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-person-fill text-primary"></i> 付款人：<strong>{{ exp.payer }}</strong><br>
+                                <i class="bi bi-calendar3"></i> 記帳時間：{{ exp.created_at }}
+                            </p>
+                            
+                            <!-- 分攤明細 -->
+                            <div class="mt-3">
+                                <span class="text-white-50 small d-block mb-1 fw-bold">室友分攤進度：</span>
+                                <div class="d-flex flex-column gap-1 bg-dark bg-opacity-30 rounded p-2" style="max-height: 120px; overflow-y: auto;">
+                                    {% for split in exp.splits %}
+                                        <div class="d-flex justify-content-between align-items-center small">
+                                            <span class="text-muted">{{ split.nickname }}</span>
+                                            <div>
+                                                <span class="text-white-50 me-2">${{ "%.2f"|format(split.amount) }}</span>
+                                                {% if split.is_settled %}
+                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-10 py-0.5">已結清</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-10 py-0.5">未結清</span>
+                                                {% endif %}
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         {% else %}
-            <div class="text-center py-5">
-                <div class="display-4 text-muted mb-3"><i class="bi bi-wallet-fill"></i></div>
-                <h5 class="text-muted mb-1">目前尚無任何記帳記錄</h5>
-                <p class="text-muted small mb-4">有共用的購買項目嗎？立即登記分攤吧！</p>
-                <a href="{{ url_for('expense.new_expense') }}" class="btn btn-gradient-success rounded-pill px-4 hover-lift">
-                    <i class="bi bi-plus-lg me-1"></i>立即記帳
-                </a>
+            <div class="col-12 text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-credit-card"></i></div>
+                <h4 class="text-white-50">尚無共同支出記錄</h4>
+                <p class="text-muted">點擊右上角按鈕新增您的第一筆日常共同支出！</p>
+                <a href="/expenses/new" class="btn btn-primary mt-2 px-4"><i class="bi bi-plus-lg"></i> 新增支出</a>
             </div>
         {% endif %}
     </div>

@@ -1,231 +1,138 @@
 {% extends "base.html" %}
 
-{% block title %}物資詳情 - {{ item.name }} - 室友共好{% endblock %}
+{% block title %}物資詳情與異動登記 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <a href="{{ url_for('inventory.list_items') }}" class="btn btn-link text-decoration-none text-muted p-0">
-        <i class="bi bi-arrow-left me-1"></i>返回物資列表
-    </a>
-</div>
-
 <div class="row g-4">
-    <!-- 左側：物資狀態與登記表單 -->
-    <div class="col-lg-5 col-12">
-        <!-- 狀態卡片 -->
-        <div class="card card-custom border-0 mb-4">
-            <div class="card-body p-4">
-                {% set is_low = item.quantity <= item.min_quantity %}
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="badge {% if is_low %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %} rounded-pill px-3 py-2 fw-semibold">
-                        {% if is_low %}
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>庫存警告：不足
-                        {% else %}
-                        <i class="bi bi-check-circle-fill me-1"></i>狀態：充足
-                        {% endif %}
-                    </span>
-                    <a href="{{ url_for('inventory.edit_item', id=item.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 hover-lift">
-                        <i class="bi bi-pencil me-1"></i>編輯品項
-                    </a>
+    <!-- 左側：品項詳情與出入庫登記 -->
+    <div class="col-lg-6">
+        <div class="card p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="card-title text-light mb-0"><i class="bi bi-info-circle"></i> 物資詳情</h2>
+                    <div class="d-flex gap-2">
+                        <a href="/inventory" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+                        <a href="/inventory/{{ item.id }}/edit" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil-square"></i> 編輯</a>
+                    </div>
                 </div>
 
-                <h2 class="fw-bold text-dark font-outfit mb-3">{{ item.name }}</h2>
+                <!-- 庫存大字面板 -->
+                <div class="bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 p-4 mb-4 text-center">
+                    <span class="text-muted d-block small">品項名稱：<strong class="text-white">{{ item.name }}</strong></span>
+                    <div class="display-3 text-white my-3 font-heading">
+                        {{ item.quantity }} <span class="fs-4 text-muted">{{ item.unit }}</span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 text-muted small">
+                        <span><i class="bi bi-shield-alert text-warning"></i> 最低安全警戒量：{{ item.min_quantity }} {{ item.unit }}</span>
+                    </div>
+                </div>
 
-                <div class="bg-light rounded-3 p-3 mb-3">
-                    <div class="row text-center">
-                        <div class="col-6 border-end">
-                            <span class="text-muted small d-block mb-1">目前庫存</span>
-                            <span class="fs-1 fw-bold text-dark font-outfit">{{ item.quantity }}</span>
-                            <span class="text-muted small">{{ item.unit }}</span>
+                <!-- 登記面板 (Tabs 或折疊) -->
+                <div class="row g-3">
+                    <!-- 入庫登記表單 -->
+                    <div class="col-12">
+                        <div class="border border-secondary border-opacity-25 rounded-3 p-3 bg-dark bg-opacity-10">
+                            <h3 class="h6 text-success mb-3"><i class="bi bi-box-arrow-in-down"></i> 📥 登記補充入庫</h3>
+                            <form action="/inventory/{{ item.id }}/stock-in" method="POST">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <input type="number" name="quantity" min="1" class="form-control form-control-sm" placeholder="輸入入庫數量" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="text" name="note" class="form-control form-control-sm" placeholder="備註 (選填，如全聯購置)">
+                                    </div>
+                                </div>
+                                <div class="form-check mb-3 small">
+                                    <input class="form-check-input" type="checkbox" name="sync_expense" value="1" id="syncExpense" onchange="toggleExpenseInput(this)">
+                                    <label class="form-check-label text-muted" for="syncExpense">
+                                        同時登記為共同開支 (全體均攤)
+                                    </label>
+                                </div>
+                                <div class="form-group mb-3 d-none" id="expenseAmountDiv">
+                                    <label class="form-label small text-warning" for="expense_amount">購買花費總金額 (TWD)</label>
+                                    <input type="number" step="0.01" name="expense_amount" id="expense_amount" class="form-control form-control-sm" placeholder="如：280">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-success w-100">確認入庫</button>
+                            </form>
                         </div>
-                        <div class="col-6">
-                            <span class="text-muted small d-block mb-1">安全最低量</span>
-                            <span class="fs-1 fw-bold text-muted font-outfit">{{ item.min_quantity }}</span>
-                            <span class="text-muted small">{{ item.unit }}</span>
+                    </div>
+
+                    <!-- 出庫登記表單 -->
+                    <div class="col-12">
+                        <div class="border border-secondary border-opacity-25 rounded-3 p-3 bg-dark bg-opacity-10">
+                            <h3 class="h6 text-danger mb-3"><i class="bi bi-box-arrow-up"></i> 📤 登記領用出庫</h3>
+                            <form action="/inventory/{{ item.id }}/stock-out" method="POST">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <input type="number" name="quantity" min="1" max="{{ item.quantity }}" class="form-control form-control-sm" placeholder="輸入出庫數量" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="text" name="note" class="form-control form-control-sm" placeholder="備註 (選填，如打掃用)">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-danger w-100" {% if item.quantity <= 0 %}disabled{% endif %}>確認出庫</button>
+                            </form>
                         </div>
-                    </div>
-                </div>
-
-                {% if is_low %}
-                <div class="alert alert-warning border-0 rounded-3 mb-0 small">
-                    <i class="bi bi-info-circle-fill me-2"></i>
-                    目前庫存已低於設定的最低安全存量（{{ item.min_quantity }} {{ item.unit }}），請儘速補充。
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- 異動登記表單 -->
-        <div class="card card-custom border-0">
-            <div class="card-header card-header-custom p-0">
-                <nav>
-                    <div class="nav nav-tabs border-bottom-0 px-3 pt-2" id="nav-tab" role="tablist">
-                        <button class="nav-link active fw-semibold text-dark border-0 border-bottom border-primary border-3 pb-2 px-3" 
-                                id="nav-stock-in-tab" data-bs-toggle="tab" data-bs-target="#nav-stock-in" 
-                                type="button" role="tab" aria-controls="nav-stock-in" aria-selected="true">
-                            <i class="bi bi-plus-circle text-success me-1"></i>入庫登記
-                        </button>
-                        <button class="nav-link fw-semibold text-dark border-0 border-bottom border-primary border-3 pb-2 px-3" 
-                                id="nav-stock-out-tab" data-bs-toggle="tab" data-bs-target="#nav-stock-out" 
-                                type="button" role="tab" aria-controls="nav-stock-out" aria-selected="false">
-                            <i class="bi bi-dash-circle text-danger me-1"></i>消耗登記
-                        </button>
-                    </div>
-                </nav>
-            </div>
-            <div class="card-body p-4">
-                <div class="tab-content" id="nav-tabContent">
-                    <!-- 入庫登記 Tab -->
-                    <div class="tab-pane fade show active" id="nav-stock-in" role="tabpanel" aria-labelledby="nav-stock-in-tab">
-                        <form action="{{ url_for('inventory.stock_in', id=item.id) }}" method="POST">
-                            <div class="mb-3">
-                                <label for="in-quantity" class="form-label fw-semibold">入庫數量 <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="in-quantity" name="quantity" min="1" placeholder="請輸入數量" required>
-                                    <span class="input-group-text bg-light text-muted">{{ item.unit }}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="in-note" class="form-label fw-semibold">入庫備註</label>
-                                <input type="text" class="form-control" id="in-note" name="note" placeholder="例如：美式賣場購入、家樂福特價">
-                            </div>
-
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" name="sync_expense" value="1" id="syncExpenseCheck">
-                                <label class="form-check-label fw-semibold text-primary" for="syncExpenseCheck">
-                                    同步建立共同開支帳目（均分給室友）
-                                </label>
-                            </div>
-
-                            <div class="mb-4" id="amountField" style="display: none;">
-                                <label for="amount" class="form-label fw-semibold">購買總金額 (元) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light">$</span>
-                                    <input type="number" step="0.01" class="form-control" id="amount" name="amount" placeholder="請輸入付款總金額" value="0">
-                                </div>
-                                <div class="form-text text-muted">此帳目將以「日用品」分類，由您付款，並在記帳系統中自動均分給所有成員。</div>
-                            </div>
-
-                            <button type="submit" class="btn btn-success w-100 rounded-pill hover-lift">
-                                <i class="bi bi-check-circle me-1"></i>送出入庫登記
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- 消耗登記 Tab -->
-                    <div class="tab-pane fade" id="nav-stock-out" role="tabpanel" aria-labelledby="nav-stock-out-tab">
-                        <form action="{{ url_for('inventory.stock_out', id=item.id) }}" method="POST">
-                            <div class="mb-3">
-                                <label for="out-quantity" class="form-label fw-semibold">消耗數量 <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="out-quantity" name="quantity" min="1" max="{{ item.quantity }}" placeholder="請輸入數量" required>
-                                    <span class="input-group-text bg-light text-muted">{{ item.unit }}</span>
-                                </div>
-                                <div class="form-text">目前最多可消耗數量為 {{ item.quantity }} {{ item.unit }}。</div>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <label for="out-note" class="form-label fw-semibold">消耗備註</label>
-                                <input type="text" class="form-control" id="out-note" name="note" placeholder="例如：拿取一包使用、廚房抹布更新">
-                            </div>
-
-                            <button type="submit" class="btn btn-danger w-100 rounded-pill hover-lift" {% if item.quantity <= 0 %}disabled{% endif %}>
-                                <i class="bi bi-dash-circle me-1"></i>
-                                {% if item.quantity > 0 %}送出消耗登記{% else %}庫存不足無法消耗{% endif %}
-                            </button>
-                        </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 右側：異動日誌歷史記錄 -->
-    <div class="col-lg-7 col-12">
-        <div class="card card-custom border-0 h-100">
-            <div class="card-header card-header-custom">
-                <h4 class="mb-0 fw-bold text-dark font-outfit">
-                    <i class="bi bi-clock-history text-primary me-2"></i>庫存異動日誌
-                </h4>
-            </div>
-            <div class="card-body p-0">
-                {% if logs %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-4">時間</th>
-                                <th>動作</th>
-                                <th>數量</th>
-                                <th>操作者</th>
-                                <th class="pe-4">備註說明</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in logs %}
-                            <tr>
-                                <td class="ps-4 text-muted small font-outfit">{{ log.created_at }}</td>
-                                <td>
-                                    {% if log.action == 'stock_in' %}
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 fw-semibold">
-                                        <i class="bi bi-plus-lg me-1"></i>入庫
-                                    </span>
-                                    {% elif log.action == 'stock_out' %}
-                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 fw-semibold">
-                                        <i class="bi bi-dash-lg me-1"></i>消耗
-                                    </span>
-                                    {% else %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 fw-semibold">
-                                        {{ log.action }}
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                <td class="font-outfit fw-bold {% if log.action == 'stock_in' %}text-success{% else %}text-danger{% endif %}">
-                                    {% if log.action == 'stock_in' %}+{% else %}-{% endif %}{{ log.quantity }}
-                                </td>
-                                <td><span class="text-dark fw-medium">{{ log.nickname }}</span></td>
-                                <td class="pe-4 text-muted small text-wrap" style="max-width: 200px;">{{ log.note or '無' }}</td>
-                            </tr>
+    <!-- 右側：出入庫記錄 Logs -->
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h3 class="card-title text-info mb-4"><i class="bi bi-clock-history"></i> 庫存異動歷史記錄</h3>
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-dark table-hover table-bordered border-secondary border-opacity-25 text-white-50 align-middle small">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>時間</th>
+                            <th>動作</th>
+                            <th>數量</th>
+                            <th>操作人</th>
+                            <th>備註</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if logs %}
+                            {% for log in logs|reverse %}
+                                <tr>
+                                    <td>{{ log.created_at.split(' ')[0] if log.created_at else '' }}</td>
+                                    <td>
+                                        {% if log.action == '入庫' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-15">入庫</span>
+                                        {% else %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-15">出庫</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-bold {% if log.action == '入庫' %}text-success{% else %}text-danger{% endif %}">
+                                        {% if log.action == '入庫' %}+{% else %}-{% endif %}{{ log.quantity }}
+                                    </td>
+                                    <td>{{ log.operator }}</td>
+                                    <td class="text-muted">{{ log.note or '' }}</td>
+                                </tr>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="p-5 text-center text-muted">
-                    <i class="bi bi-info-circle fs-2 mb-2 d-block"></i>
-                    <span>此物資目前尚無異動紀錄。</span>
-                </div>
-                {% endif %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">暫無庫存異動明細</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const check = document.getElementById('syncExpenseCheck');
-        const amountField = document.getElementById('amountField');
-        const amountInput = document.getElementById('amount');
-        
-        if (check) {
-            check.addEventListener('change', function() {
-                if (this.checked) {
-                    amountField.style.display = 'block';
-                    amountInput.required = true;
-                    if (amountInput.value === '0') {
-                        amountInput.value = '';
-                    }
-                    amountInput.focus();
-                } else {
-                    amountField.style.display = 'none';
-                    amountInput.required = false;
-                    amountInput.value = '0';
-                }
-            });
-        }
-    });
+function toggleExpenseInput(checkbox) {
+    var div = document.getElementById('expenseAmountDiv');
+    if (checkbox.checked) {
+        div.classList.remove('d-none');
+    } else {
+        div.classList.add('d-none');
+    }
+}
 </script>
 {% endblock %}

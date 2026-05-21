@@ -1,53 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}登錄電費帳單 - 室友共好{% endblock %}
+{% block title %}登錄電費帳單 - 宿舍共好{% block title_end %}{% endblock %}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
+<div class="row g-4 justify-content-center">
     <div class="col-md-8">
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-lightning-charge-fill text-warning me-2"></i>登錄新電費帳單
-            </div>
-            <div class="card-body p-4">
-                <form action="{{ url_for('electricity.create_bill') }}" method="POST">
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="period_start" class="form-label font-monospace small text-muted">計費期間 - 起始日</label>
-                            <input type="date" class="form-control" id="period_start" name="period_start" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="period_end" class="form-label font-monospace small text-muted">計費期間 - 結束日</label>
-                            <input type="date" class="form-control" id="period_end" name="period_end" required>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="total_amount" class="form-label font-monospace small text-muted">帳單總金額 (元)</label>
+        <div class="card p-4">
+            <h2 class="card-title text-danger mb-2"><i class="bi bi-file-earmark-medical"></i> 登錄新期電費帳單</h2>
+            <p class="text-muted small mb-4">輸入本期電力公司的電費單資訊。建立帳單後，室友將需要登錄各自的私有電表度數，系統將自動按用電量比例完成個人/公用電費的智慧分攤。</p>
+
+            <form action="/electricity" method="POST">
+                <div class="row g-3 mb-3">
+                    <!-- 電費總金額 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="total_amount">帳單總金額 (TWD)</label>
                             <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="total_amount" name="total_amount" placeholder="0.00" required>
+                                <span class="input-group-text bg-dark border-secondary text-muted">$</span>
+                                <input type="number" step="0.01" min="0.01" id="total_amount" name="total_amount" class="form-control" placeholder="如：3200" required>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="total_kwh" class="form-label font-monospace small text-muted">總用電度數 (度，選填)</label>
-                            <input type="number" step="0.1" min="0.1" class="form-control" id="total_kwh" name="total_kwh" placeholder="例如：520.5">
-                            <div class="form-text">填寫用電度數後，系統可按個人與公用度數進行精準分攤</div>
+                    </div>
+                    <!-- 電費總度數 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="total_kwh">用電總度數 (kWh)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.1" min="0.1" id="total_kwh" name="total_kwh" class="form-control" placeholder="如：850" required>
+                                <span class="input-group-text bg-dark border-secondary text-muted">度</span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('electricity.list_bills') }}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill hover-lift">
-                            <i class="bi bi-x-circle me-1"></i>取消
-                        </a>
-                        <button type="submit" class="btn btn-gradient-secondary btn-sm px-4 rounded-pill hover-lift">
-                            <i class="bi bi-check-circle-fill me-1"></i>登記帳單
-                        </button>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <!-- 計費起日 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="period_start">計費起始日期</label>
+                            <input type="date" id="period_start" name="period_start" class="form-control" required>
+                        </div>
                     </div>
-                </form>
-            </div>
+                    <!-- 計費迄日 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="period_end">計費結束日期</label>
+                            <input type="date" id="period_end" name="period_end" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按鈕 -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/electricity" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-danger px-4"><i class="bi bi-check-lg"></i> 確認登錄</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

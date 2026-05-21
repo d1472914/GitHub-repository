@@ -1,119 +1,68 @@
 {% extends "base.html" %}
 
-{% block title %}餘額與結算 - 室友共好{% endblock %}
+{% block title %}室友餘額總覽與結算 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-center">
-    <div class="col-sm-6">
-        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-wallet2 text-success me-2"></i>餘額總覽與結算</h2>
-        <p class="text-muted mb-0">查看所有室友的收支餘額並結清款項</p>
-    </div>
-    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
-        <a href="{{ url_for('expense.list_expenses') }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
-            <i class="bi bi-arrow-left me-1"></i>返回開支列表
-        </a>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Left Column: Current User's Net Status -->
-    <div class="col-md-5 mb-4">
-        {% set my_data = (balances|selectattr('user_id', 'equalto', current_user_id)|list)[0] %}
-        <div class="card card-custom border-0 shadow text-center mb-4">
-            <div class="card-header card-header-custom">
-                我的收支狀態
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h2 class="card-title text-info mb-1"><i class="bi bi-wallet2"></i> 室友餘額總覽與結算</h2>
+                    <p class="text-muted mb-0 small">此處顯示您與每位室友之間未結清的淨額關係。綠色代表室友欠您，紅色代表您欠室友。</p>
+                </div>
+                <a href="/expenses" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回記帳本</a>
             </div>
-            <div class="card-body p-5">
-                <span class="text-muted small d-block mb-2">目前累計淨額</span>
-                {% if my_data and my_data.balance > 0 %}
-                    <h1 class="display-5 fw-bold text-success font-monospace">+${{ "{:,.2f}".format(my_data.balance) }}</h1>
-                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 mt-2">
-                        <i class="bi bi-arrow-up-circle-fill me-1"></i>應收回帳款
-                    </span>
-                {% elif my_data and my_data.balance < 0 %}
-                    <h1 class="display-5 fw-bold text-danger font-monospace">-${{ "{:,.2f}".format(my_data.balance|abs) }}</h1>
-                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2 mt-2">
-                        <i class="bi bi-arrow-down-circle-fill me-1"></i>應支付帳款
-                    </span>
+
+            <!-- 餘額列表 -->
+            <div class="d-flex flex-column gap-3">
+                {% if balances %}
+                    {% for bal in balances %}
+                        <div class="p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-secondary bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                    <i class="bi bi-person text-white fs-4"></i>
+                                </div>
+                                <div>
+                                    <strong class="text-white fs-5 font-heading">{{ bal.nickname }}</strong>
+                                    {% if bal.balance > 0 %}
+                                        <span class="text-muted d-block small">應支付您</span>
+                                    {% elif bal.balance < 0 %}
+                                        <span class="text-muted d-block small">您應支付他/她</span>
+                                    {% else %}
+                                        <span class="text-muted d-block small">無欠款關係</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- 淨額數字與按鈕 -->
+                            <div class="d-flex align-items-center gap-3">
+                                {% if bal.balance > 0 %}
+                                    <span class="text-success fw-bold fs-4 font-heading">+${{ "%.2f"|format(bal.balance) }}</span>
+                                    <form action="/expenses/settle" method="POST" class="m-0">
+                                        <input type="hidden" name="settle_with_user_id" value="{{ bal.user_id }}">
+                                        <button type="submit" class="btn btn-sm btn-success px-3 rounded-pill"><i class="bi bi-check-circle"></i> 標記結清</button>
+                                    </form>
+                                {% elif bal.balance < 0 %}
+                                    <span class="text-danger fw-bold fs-4 font-heading">-${{ "%.2f"|format(bal.balance|abs) }}</span>
+                                    <form action="/expenses/settle" method="POST" class="m-0">
+                                        <input type="hidden" name="settle_with_user_id" value="{{ bal.user_id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger px-3 rounded-pill"><i class="bi bi-check-circle"></i> 我已還款</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted fs-5">已結清 🤝</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
                 {% else %}
-                    <h1 class="display-5 fw-bold text-muted font-monospace">$0.00</h1>
-                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-2 mt-2">
-                        <i class="bi bi-check-circle-fill me-1"></i>已全部結清
-                    </span>
+                    <div class="text-center py-5">
+                        <div class="display-5 text-muted mb-2">🤝</div>
+                        <p class="text-muted mb-0">群組目前尚無未結清的帳務，大家合作無間！</p>
+                    </div>
                 {% endif %}
             </div>
-        </div>
-
-        <!-- Settle Quick Action -->
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-check2-circle text-success me-2"></i>快速結帳
-            </div>
-            <div class="card-body p-4">
-                <form action="{{ url_for('expense.settle') }}" method="POST">
-                    <div class="mb-3">
-                        <label for="settle_with_user_id" class="form-label font-monospace small text-muted">選擇結算對象</label>
-                        <select class="form-select" id="settle_with_user_id" name="settle_with_user_id" required>
-                            <option value="" disabled selected>--- 請選擇室友 ---</option>
-                            {% for b in balances if b.user_id != current_user_id %}
-                                <option value="{{ b.user_id }}">{{ b.nickname }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-gradient-success w-100 py-2 rounded-3" onclick="return confirm('確定要結清與該室友的所有未結帳目嗎？此動作會將所有雙方的開支分攤標記為「已結清」。');">
-                        <i class="bi bi-check-lg me-1"></i>確認結清帳目
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column: Roommates Balance Sheet -->
-    <div class="col-md-7 mb-4">
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-people-fill text-primary me-2"></i>室友收支明細
-            </div>
-            <div class="card-body p-4">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>#</th>
-                                <th>室友</th>
-                                <th>累計應收/應付淨額</th>
-                                <th>狀態</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for b in balances %}
-                                <tr>
-                                    <td class="font-monospace text-muted">{{ loop.index }}</td>
-                                    <td>
-                                        <i class="bi bi-person-fill text-muted me-1"></i>
-                                        <strong>{{ b.nickname }}</strong>
-                                        {% if b.user_id == current_user_id %}
-                                            <span class="badge bg-light text-dark font-monospace ms-1">我自己</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="font-monospace fw-bold {% if b.balance > 0 %}text-success{% elif b.balance < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                        {% if b.balance > 0 %}+{% endif %}${{ "{:,.2f}".format(b.balance) }}
-                                    </td>
-                                    <td>
-                                        {% if b.balance > 0 %}
-                                            <span class="badge bg-success bg-opacity-10 text-success">多付帳款</span>
-                                        {% elif b.balance < 0 %}
-                                            <span class="badge bg-danger bg-opacity-10 text-danger">少付帳款</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary">已結清</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            
         </div>
     </div>
 </div>

@@ -1,73 +1,104 @@
 {% extends "base.html" %}
 
-{% block title %}提醒統計 - 室友共好{% endblock %}
+{% block title %}室友提醒統計分析 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="row mb-4 align-items-center">
-    <div class="col-sm-6">
-        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-bar-chart-fill text-danger me-2"></i>生活提醒統計摘要</h2>
-        <p class="text-muted mb-0">管理員專用 | 分析宿舍矛盾類別趨勢，評估公約成效</p>
-    </div>
-    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
-        <a href="{{ url_for('reminder.inbox') }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
-            <i class="bi bi-arrow-left me-1"></i>返回收件匣
-        </a>
-    </div>
-</div>
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="card-title text-info mb-0"><i class="bi bi-bar-chart-line"></i> 宿舍生活摩擦統計分析 (管理專用)</h2>
+                <a href="/dashboard" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回儀表板</a>
+            </div>
 
-<div class="row">
-    <!-- Stats table & counts -->
-    <div class="col-md-6 mb-4">
-        <div class="card card-custom border-0 shadow h-100">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-list-ol me-2 text-danger"></i>各類別投訴次數
-            </div>
-            <div class="card-body p-4">
-                {% if stats %}
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>提醒類別</th>
-                                    <th class="text-center">累計發送次數</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for s in stats %}
-                                    <tr>
-                                        <td>
-                                            <span class="fw-semibold text-dark">{{ s.category_display }}</span>
-                                        </td>
-                                        <td class="text-center font-monospace fw-bold text-danger fs-5">{{ s.count }} 次</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="text-center py-5">
-                        <p class="text-muted mb-0">目前尚無任何發送提醒的記錄，大家都相處得很融洽！</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+            <p class="text-muted small mb-4">
+                此處分析彙整目前群組內發出的所有匿名提醒類別比例，方便宿舍管理者掌握大家最常遭遇的生活習慣衝突點，以作為調整「室友公約」的參考依據。 (⚠️ 統計數據完全匿名化，保護個人隱私。)
+            </p>
 
-    <!-- Right Column: Recommendation card -->
-    <div class="col-md-6 mb-4">
-        <div class="card card-custom border-0 shadow bg-light h-100">
-            <div class="card-body p-5 d-flex flex-column justify-content-center">
-                <h4 class="fw-bold text-dark mb-3"><i class="bi bi-lightbulb-fill text-warning me-2"></i>管理建議說明</h4>
-                <p class="text-muted small">
-                    本系統的匿名提醒旨在作為室友之間溝通的緩衝地帶（黑臉）。管理員可以根據以上統計結果，了解寢室或房屋內主要的摩擦點：
-                </p>
-                <ul class="text-muted small ps-3">
-                    <li class="mb-2"><strong>若噪音管理次數較高</strong>：建議重新修訂並加強公約中的安靜時段條款。</li>
-                    <li class="mb-2"><strong>若衛生清潔次數較高</strong>：建議檢查家務輪值工作表是否指派均勻，或調整輪值頻率。</li>
-                    <li><strong>若其他類別次數較高</strong>：建議召開室友會議，共同增訂新的宿舍共識。</li>
-                </ul>
+            <div class="row g-4 align-items-center">
+                <!-- 圖表區域 -->
+                <div class="col-md-6 text-center">
+                    <div class="chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+                <!-- 數字指標 -->
+                <div class="col-md-6">
+                    <h3 class="h6 text-white mb-3">各類別提醒累計次數：</h3>
+                    <div class="d-flex flex-column gap-2">
+                        {% if stats %}
+                            {% for item in stats %}
+                                <div class="d-flex justify-content-between align-items-center p-2.5 bg-dark bg-opacity-20 border border-secondary border-opacity-20 rounded-3">
+                                    <span class="text-white-50">{{ item.category }}</span>
+                                    <span class="badge bg-primary rounded-pill font-heading px-3 py-1.5">{{ item.count }} 次</span>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">暫無統計數據，代表大家都相處融洽！</p>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
+
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('statsChart').getContext('2d');
+        var categories = {{ categories|tojson }};
+        var counts = {{ counts|tojson }};
+        
+        if (categories.length === 0) {
+            categories = ['暫無數據'];
+            counts = [0];
+        }
+
+        var myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: '匿名提醒次數',
+                    data: counts,
+                    backgroundColor: [
+                        'rgba(99, 102, 241, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(14, 165, 233, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(99, 102, 241, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(14, 165, 233, 1)'
+                    ],
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            font: {
+                                family: 'Inter'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

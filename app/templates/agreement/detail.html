@@ -1,153 +1,97 @@
 {% extends "base.html" %}
 
-{% block title %}公約詳情：{{ agreement.title }} - 室友共好{% endblock %}
+{% block title %}公約詳情 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('agreement.list_agreements') }}" class="text-decoration-none">公約列表</a></li>
-                <li class="breadcrumb-item active" aria-current="page">公約詳情</li>
-            </ol>
-        </nav>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Left Column: Agreement details and versions -->
-    <div class="col-md-8 mb-4">
-        <!-- Content Card -->
-        <div class="card card-custom border-0 shadow mb-4">
-            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="fw-bold text-dark mb-1">{{ agreement.title }}</h3>
-                    <div class="d-flex align-items-center gap-2">
-                        {% if agreement.category == 'noise' %}
-                            <span class="badge bg-danger bg-opacity-10 text-danger"><i class="bi bi-volume-mute me-1"></i>噪音管理</span>
-                        {% elif agreement.category == 'hygiene' %}
-                            <span class="badge bg-success bg-opacity-10 text-success"><i class="bi bi-trash me-1"></i>衛生環境</span>
-                        {% elif agreement.category == 'visitor' %}
-                            <span class="badge bg-info bg-opacity-10 text-info"><i class="bi bi-people me-1"></i>訪客規定</span>
-                        {% else %}
-                            <span class="badge bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-info-circle me-1"></i>{{ agreement.category or '其他' }}</span>
-                        {% endif %}
-                        <span class="text-muted small">/ {{ agreement.created_at }}</span>
-                    </div>
-                </div>
-                <div>
+<div class="row g-4">
+    <!-- 左側：條文詳情、同意狀態 -->
+    <div class="col-lg-8">
+        <div class="card p-4 h-100">
+            <!-- 標頭與狀態 -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary px-3 py-1.5">{{ agreement.category }}</span>
                     {% if agreement.status == 'active' %}
-                        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>已生效</span>
+                        <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-3 py-1"><i class="bi bi-patch-check-fill"></i> 已生效公約</span>
                     {% else %}
-                        <span class="badge bg-warning text-dark fs-6"><i class="bi bi-hourglass-split me-1"></i>審核中</span>
+                        <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30 rounded-pill px-3 py-1"><i class="bi bi-hourglass-split"></i> 提案表決中</span>
                     {% endif %}
                 </div>
+                <div class="d-flex gap-2">
+                    <a href="/agreements/{{ agreement.id }}/edit" class="btn btn-sm btn-outline-warning"><i class="bi bi-pencil-square"></i> 編輯</a>
+                    <form action="/agreements/{{ agreement.id }}/delete" method="POST" class="m-0" onsubmit="return confirm('確定要刪除此條公約嗎？此操作無法復原。');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> 刪除</button>
+                    </form>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <div class="bg-light p-4 rounded-3 mb-4" style="white-space: pre-line; min-height: 150px; font-size: 1.05rem;">{{ agreement.content }}</div>
-                
-                <!-- Action Row -->
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div class="d-flex gap-2">
-                        {% if not has_approved %}
-                            <form action="{{ url_for('agreement.approve_agreement', id=agreement.id) }}" method="POST">
-                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 hover-lift">
-                                    <i class="bi bi-check-lg me-1"></i>同意簽署
-                                </button>
-                            </form>
-                        {% else %}
-                            <button class="btn btn-outline-success btn-sm rounded-pill px-4" disabled>
-                                <i class="bi bi-check-circle-fill me-1"></i>您已同意
-                            </button>
-                        {% endif %}
+
+            <h1 class="h2 text-white font-heading mb-4">{{ agreement.title }}</h1>
+            
+            <!-- 條文內容 -->
+            <div class="bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 p-4 mb-4" style="min-height: 200px; white-space: pre-wrap; line-height: 1.8; color: #e2e8f0;">{{ agreement.content }}</div>
+
+            <!-- 同意按鈕 -->
+            {% if agreement.status == 'pending' %}
+                {% if not has_approved %}
+                    <form action="/agreements/{{ agreement.id }}/approve" method="POST" class="mb-4">
+                        <button type="submit" class="btn btn-success btn-lg w-100 py-3 rounded-3 shadow-sm"><i class="bi bi-check-circle-fill me-2"></i> 我同意此公約提案</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 text-success mb-4 text-center py-3">
+                        <i class="bi bi-heart-pulse-fill me-2"></i> 您已表示同意！正在等待其他室友投票表決...
                     </div>
-                    
-                    <div class="d-flex gap-2">
-                        <a href="{{ url_for('agreement.edit_agreement', id=agreement.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 hover-lift">
-                            <i class="bi bi-pencil-square me-1"></i>編輯公約
-                        </a>
-                        <form action="{{ url_for('agreement.delete_agreement', id=agreement.id) }}" method="POST" onsubmit="return confirm('確定要刪除這條公約提案嗎？此動作將會清除所有歷史版本與簽署記錄！');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 hover-lift">
-                                <i class="bi bi-trash3 me-1"></i>刪除
-                            </button>
-                        </form>
-                    </div>
+                {% endif %}
+            {% endif %}
+
+            <!-- 同意狀況統計 -->
+            <div class="border-top border-secondary border-opacity-25 pt-4 mt-2">
+                <h3 class="h5 text-white mb-3"><i class="bi bi-check2-all text-info me-2"></i> 室友投票表決進度</h3>
+                <div class="row g-3">
+                    {% for member in members %}
+                        <div class="col-6 col-sm-4">
+                            <div class="d-flex align-items-center gap-2 p-2 bg-dark bg-opacity-15 border border-secondary border-opacity-15 rounded-3">
+                                {% if member.id in approved_user_ids %}
+                                    <span class="text-success fs-5"><i class="bi bi-check-circle-fill"></i></span>
+                                    <span class="text-white-50 small">{{ member.nickname }} <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-10 small-badge">同意</span></span>
+                                {% else %}
+                                    <span class="text-muted fs-5"><i class="bi bi-circle"></i></span>
+                                    <span class="text-muted small">{{ member.nickname }} <span class="badge bg-secondary bg-opacity-10 text-muted border border-secondary border-opacity-10 small-badge">待定</span></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
-
-        <!-- Version History Card -->
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-clock-history me-2 text-primary"></i>公約修訂歷史記錄
-            </div>
-            <div class="card-body p-4">
-                {% if versions %}
-                    <div class="accordion" id="versionAccordion">
-                        {% for v in versions|sort(attribute='version_number', reverse=True) %}
-                            <div class="accordion-item border-0 border-bottom">
-                                <h2 class="accordion-header" id="heading{{ v.version_number }}">
-                                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %} px-0 py-3 bg-transparent shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ v.version_number }}" aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ v.version_number }}">
-                                        <div class="d-flex justify-content-between w-100 align-items-center pe-3">
-                                            <span class="fw-bold text-dark">版本 v{{ v.version_number }}</span>
-                                            <span class="text-muted small font-monospace">{{ v.modified_at }}</span>
-                                        </div>
-                                    </button>
-                                </h2>
-                                <div id="collapse{{ v.version_number }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="heading{{ v.version_number }}" data-bs-parent="#versionAccordion">
-                                    <div class="accordion-body px-0 py-3 text-muted">
-                                        <div class="row">
-                                            {% if v.content_before %}
-                                                <div class="col-md-6 mb-3">
-                                                    <strong class="small d-block mb-1 text-danger"><i class="bi bi-dash-circle me-1"></i>修訂前內容：</strong>
-                                                    <div class="bg-light p-3 rounded small" style="white-space: pre-line;">{{ v.content_before }}</div>
-                                                </div>
-                                            {% endif %}
-                                            <div class="col-md-{% if v.content_before %}6{% else %}12{% endif %} mb-3">
-                                                <strong class="small d-block mb-1 text-success"><i class="bi bi-plus-circle me-1"></i>{% if v.content_before %}修訂後內容：{% else %}初始條文：{% endif %}</strong>
-                                                <div class="bg-light p-3 rounded small" style="white-space: pre-line;">{{ v.content_after }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted mb-0">無修訂歷史記錄。</p>
-                {% endif %}
-            </div>
-        </div>
     </div>
-    
-    <!-- Right Column: Roommates signing status -->
-    <div class="col-md-4 mb-4">
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-pen-fill text-primary me-2"></i>室友聯署簽置狀態
-            </div>
-            <div class="card-body p-4">
-                <ul class="list-group list-group-flush">
-                    {% for r in roommates_status %}
-                        <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-person text-muted me-1"></i>
-                                <strong>{{ r.nickname }}</strong>
+
+    <!-- 右側：歷史版本 Timeline -->
+    <div class="col-lg-4">
+        <div class="card p-4 h-100">
+            <h3 class="card-title text-info mb-4"><i class="bi bi-clock-history"></i> 公約異動歷史</h3>
+            <div class="timeline mt-3" style="position: relative; border-left: 2px solid rgba(255,255,255,0.08); padding-left: 20px; margin-left: 10px;">
+                {% if versions %}
+                    {% for version in versions|reverse %}
+                        <div class="mb-4" style="position: relative;">
+                            <span class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="position: absolute; left: -31px; top: 0; width: 20px; height: 20px; font-size: 0.65rem;">
+                                {{ version.version_number }}
+                            </span>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-white-50">第 {{ version.version_number }} 版</strong>
+                                <small class="text-muted">{{ version.created_at.split(' ')[0] if version.created_at else '' }}</small>
                             </div>
-                            <div>
-                                {% if r.has_approved %}
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1.5 small">
-                                        <i class="bi bi-check-lg me-1"></i>已簽署
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1.5 small">
-                                        <i class="bi bi-clock me-1"></i>待簽署
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </li>
+                            <p class="text-muted small mb-0">變更由室友提交</p>
+                            {% if version.content_before %}
+                                <div class="mt-2 p-2 bg-dark bg-opacity-25 border border-secondary border-opacity-10 rounded-2 text-muted small">
+                                    <span class="text-danger-custom d-block"><del>舊條文：{{ version.content_before[:40] }}...</del></span>
+                                    <span class="text-success-custom d-block">新條文：{{ version.content_after[:40] }}...</span>
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endfor %}
-                </ul>
+                {% else %}
+                    <p class="text-muted small">尚無版本變更記錄</p>
+                {% endif %}
             </div>
         </div>
     </div>

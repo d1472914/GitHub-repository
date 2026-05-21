@@ -1,2 +1,4 @@
-# Utils package
-# Utils Package
+"""
+Utils 套件初始化
+提供認證輔助與計算邏輯等共用工具
+"""

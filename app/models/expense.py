@@ -1,243 +1,114 @@
-import sqlite3
+"""
+Expense Model — 共同開支資料模型 (sqlite3 版本)
+"""
+
 import os
-import logging
+import sqlite3
+
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'instance', 'database.db')
 
 def get_db_connection():
-    """
-    建立並回傳 SQLite 資料庫連線。
-    資料庫路徑為 instance/database.db，並啟用外鍵約束與 Row factory。
-    
-    Returns:
-        sqlite3.Connection: 資料庫連線物件
-    """
+    """建立 SQLite 資料庫連線"""
     try:
-        db_path = os.path.join(os.getcwd(), 'instance', 'database.db')
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(DATABASE_PATH)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
         return conn
     except sqlite3.Error as e:
-        logging.error(f"Database connection error: {e}")
-        raise
+        print(f"Database connection error in expense model: {e}")
+        raise e
 
 def create(data):
     """
-    新增一筆共同開支記錄，並動態分攤給指定/全部成員。
-    
-    Args:
-        data (dict): 包含 group_id, title, amount, category, paid_by 的字典。
-                     可選包含 splits 列表，每個 split 是包含 user_id 和 amount 的 dict。
-                     若未傳入 splits，則預設均攤給群組內的所有成員。
-        
-    Returns:
-        int: 新增開支的 id，若失敗則回傳 None。
+    建立新開支記錄
+    :param data: dict, 包含 group_id, title, amount, category, paid_by
+    :return: int 新增的開支 ID 或 None
     """
-    conn = None
+    sql = """
+    INSERT INTO expenses (group_id, title, amount, category, paid_by)
+    VALUES (?, ?, ?, ?, ?)
+    """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 1. 寫入 expense
-        expense_sql = """
-            INSERT INTO expenses (group_id, title, amount, category, paid_by)
-            VALUES (?, ?, ?, ?, ?)
-        """
-        cursor.execute(expense_sql, (
-            data.get('group_id'),
-            data.get('title'),
-            data.get('amount'),
-            data.get('category'),
-            data.get('paid_by')
-        ))
-        expense_id = cursor.lastrowid
-        
-        # 2. 處理分攤 splits
-        splits = data.get('splits')
-        paid_by = data.get('paid_by')
-        
-        if not splits:
-            # 預設：均攤給群組裡的所有成員
-            cursor.execute("SELECT id FROM users WHERE group_id = ?", (data.get('group_id'),))
-            members = cursor.fetchall()
-            if members:
-                member_count = len(members)
-                split_amount = round(data.get('amount') / member_count, 2)
-                
-                splits = []
-                for m in members:
-                    # 如果是被分攤者等於付款者本人，預設 is_settled = 1 (自己付給自己的部分自動結清)
-                    # 這裡為了簡化計算，我們仍寫入 split，但若 user_id == paid_by，可以標記為 is_settled = 1
-                    is_settled = 1 if m['id'] == paid_by else 0
-                    splits.append({
-                        'user_id': m['id'],
-                        'amount': split_amount,
-                        'is_settled': is_settled
-                    })
-                    
-        # 寫入 expense_splits
-        split_sql = """
-            INSERT INTO expense_splits (expense_id, user_id, amount, is_settled)
-            VALUES (?, ?, ?, ?)
-        """
-        for s in splits:
-            # 若 split dict 中沒特別指定 is_settled，則預設若 user_id == paid_by 為 1，否則為 0
-            is_settled = s.get('is_settled', 1 if s.get('user_id') == paid_by else 0)
-            cursor.execute(split_sql, (expense_id, s.get('user_id'), s.get('amount'), is_settled))
-            
-        conn.commit()
-        return expense_id
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (
+                data.get('group_id'),
+                data.get('title'),
+                data.get('amount'),
+                data.get('category'),
+                data.get('paid_by')
+            ))
+            conn.commit()
+            return cursor.lastrowid
     except sqlite3.Error as e:
-        logging.error(f"Error creating expense: {e}")
-        if conn:
-            conn.rollback()
+        print(f"Error in create expense: {e}")
         return None
-    finally:
-        if conn:
-            conn.close()
 
 def get_all():
     """
-    取得所有開支。
-    
-    Returns:
-        list: 所有開支記錄列表。
+    取得所有開支記錄
+    :return: list of Row
     """
     sql = "SELECT * FROM expenses"
-    conn = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        return cursor.fetchall()
+        with get_db_connection() as conn:
+            return conn.execute(sql).fetchall()
     except sqlite3.Error as e:
-        logging.error(f"Error getting all expenses: {e}")
+        print(f"Error in get_all expenses: {e}")
         return []
-    finally:
-        if conn:
-            conn.close()
+
+def get_by_group_id(group_id):
+    """
+    取得某個群組的所有開支記錄，並按時間由新到舊排序
+    :param group_id: int, 群組 ID
+    :return: list of Row
+    """
+    sql = "SELECT * FROM expenses WHERE group_id = ? ORDER BY created_at DESC"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (group_id,)).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_by_group_id expenses ({group_id}): {e}")
+        return []
 
 def get_by_id(expense_id):
     """
-    取得單筆開支。
-    
-    Args:
-        expense_id (int): 開支 ID。
-        
-    Returns:
-        sqlite3.Row: 開支記錄。
+    依 ID 取得單筆開支記錄
+    :param expense_id: int, 開支 ID
+    :return: Row 或 None
     """
     sql = "SELECT * FROM expenses WHERE id = ?"
-    conn = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (expense_id,))
-        return cursor.fetchone()
+        with get_db_connection() as conn:
+            return conn.execute(sql, (expense_id,)).fetchone()
     except sqlite3.Error as e:
-        logging.error(f"Error getting expense by id: {e}")
+        print(f"Error in get_by_id expense ({expense_id}): {e}")
         return None
-    finally:
-        if conn:
-            conn.close()
-
-def get_by_group(group_id):
-    """
-    取得特定群組的所有開支，包含付款人暱稱。
-    
-    Args:
-        group_id (int): 群組 ID。
-        
-    Returns:
-        list: 開支記錄列表。
-    """
-    sql = """
-        SELECT e.*, u.nickname as paid_by_name 
-        FROM expenses e
-        JOIN users u ON e.paid_by = u.id
-        WHERE e.group_id = ?
-        ORDER BY e.created_at DESC
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (group_id,))
-        return cursor.fetchall()
-    except sqlite3.Error as e:
-        logging.error(f"Error getting expenses by group: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
 
 def update(expense_id, data):
     """
-    更新開支資料。
-    注意：這僅更新 expenses 表本身。
-    
-    Args:
-        expense_id (int): 開支 ID。
-        data (dict): 更新的欄位（如 title, amount, category, paid_by）。
-        
-    Returns:
-        bool: 是否更新成功。
+    更新開支資料
+    :param expense_id: int, 開支 ID
+    :param data: dict, 需要更新的欄位值
+    :return: bool 是否更新成功
     """
     if not data:
         return False
         
-    fields = []
-    params = {'id': expense_id}
-    for key in ['title', 'amount', 'category', 'paid_by']:
-        if key in data:
-            fields.append(f"{key} = :{key}")
-            params[key] = data[key]
-            
-    if not fields:
-        return False
-        
-    sql = f"UPDATE expenses SET {', '.join(fields)} WHERE id = :id"
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, params)
-        conn.commit()
-        return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        logging.error(f"Error updating expense: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-def delete(expense_id):
-    """
-    刪除開支與其關聯的所有分攤。
+    keys = list(data.keys())
+    set_clause = ", ".join([f"{key} = ?" for key in keys])
+    sql = f"UPDATE expenses SET {set_clause} WHERE id = ?"
     
-    Args:
-        expense_id (int): 開支 ID。
-        
-    Returns:
-        bool: 是否刪除成功。
-    """
-    conn = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("DELETE FROM expense_splits WHERE expense_id = ?", (expense_id,))
-        cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
-        
-        conn.commit()
-        return cursor.rowcount > 0
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            params = [data[key] for key in keys]
+            params.append(expense_id)
+            cursor.execute(sql, params)
+            conn.commit()
+            return cursor.rowcount > 0
     except sqlite3.Error as e:
-        logging.error(f"Error deleting expense: {e}")
-        if conn:
-            conn.rollback()
+        print(f"Error in update expense ({expense_id}): {e}")
         return False
     finally:
         if conn:
@@ -457,3 +328,20 @@ def get_group_balances(group_id):
         if conn:
             conn.close()
 
+
+def delete(expense_id):
+    """
+    刪除開支記錄
+    :param expense_id: int, 開支 ID
+    :return: bool 是否刪除成功
+    """
+    sql = "DELETE FROM expenses WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (expense_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in delete expense ({expense_id}): {e}")
+        return False
