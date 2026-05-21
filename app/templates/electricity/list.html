@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-<<<<<<< HEAD
 {% block title %}智慧電費帳單 - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -43,81 +42,6 @@
                 <h4 class="text-white-50">尚無電費帳單記錄</h4>
                 <p class="text-muted">收到台電的電費單時，點擊右上角登錄以開始讓室友登記度數吧！</p>
                 <a href="/electricity/new" class="btn btn-primary mt-2 px-4"><i class="bi bi-plus-lg"></i> 登錄電費單</a>
-=======
-{% block title %}智慧電費 - 室友共好{% endblock %}
-
-{% block content %}
-<div class="row mb-4 align-items-center">
-    <div class="col-sm-6">
-        <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-lightning-charge text-warning me-2"></i>智慧電費管理</h2>
-        <p class="text-muted mb-0">登錄公共電費並記錄室友分攤</p>
-    </div>
-    <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
-        <a href="{{ url_for('electricity.new_bill') }}" class="btn btn-gradient-secondary rounded-pill px-4 hover-lift">
-            <i class="bi bi-plus-lg me-1"></i>登錄新帳單
-        </a>
-    </div>
-</div>
-
-<div class="card card-custom border-0 shadow">
-    <div class="card-body p-4">
-        {% if bills %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 5%">#</th>
-                            <th style="width: 25%">計費期間</th>
-                            <th style="width: 15%">總金額</th>
-                            <th style="width: 15%">總用電度數</th>
-                            <th style="width: 15%">度數登錄進度</th>
-                            <th style="width: 15%">狀態</th>
-                            <th style="width: 10%" class="text-center">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for b in bills %}
-                            <tr>
-                                <td class="font-monospace text-muted">{{ loop.index }}</td>
-                                <td>
-                                    <span class="fw-semibold text-dark">{{ b.period_start }} ~ {{ b.period_end }}</span>
-                                </td>
-                                <td class="font-monospace fw-bold text-success">${{ "{:,.2f}".format(b.total_amount) }}</td>
-                                <td class="font-monospace">{{ "{:,.1f}".format(b.total_kwh) if b.total_kwh else '未填寫' }} 度</td>
-                                <td>
-                                    {% if b.is_complete %}
-                                        <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>已全部完成</span>
-                                    </td>
-                                    {% else %}
-                                        <span class="text-warning"><i class="bi bi-clock-history me-1"></i>已填寫 {{ b.readings_count }} 人</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if b.is_complete %}
-                                        <span class="badge bg-success">已結算</span>
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark">分攤中</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
-                                    <a href="{{ url_for('electricity.detail_bill', id=b.id) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 hover-lift">
-                                        查看明細
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <div class="display-4 text-muted mb-3"><i class="bi bi-lightning-charge-fill text-warning"></i></div>
-                <h5 class="text-muted mb-1">目前尚無電費帳單記錄</h5>
-                <p class="text-muted small mb-4">收到台電的帳單了嗎？快來登錄以計算每人分攤！</p>
-                <a href="{{ url_for('electricity.new_bill') }}" class="btn btn-gradient-secondary rounded-pill px-4 hover-lift">
-                    <i class="bi bi-plus-lg me-1"></i>登錄新帳單
-                </a>
->>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
             </div>
         {% endif %}
     </div>

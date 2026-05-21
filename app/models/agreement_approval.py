@@ -1,75 +1,152 @@
 """
-AgreementApproval Model — 公約同意記錄
-記錄每位室友對公約的確認同意
+AgreementApproval Model — 公約同意記錄資料模型 (sqlite3 版本)
 """
 
-from datetime import datetime
-from app.models import db
+import os
+import sqlite3
 
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'instance', 'database.db')
 
-class AgreementApproval(db.Model):
-    __tablename__ = 'agreement_approvals'
+def get_db_connection():
+    """建立 SQLite 資料庫連線"""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+    except sqlite3.Error as e:
+        print(f"Database connection error in agreement_approval model: {e}")
+        raise e
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    agreement_id = db.Column(db.Integer, db.ForeignKey('agreements.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    approved_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+def create(data):
+    """
+    建立新同意記錄
+    :param data: dict, 包含 agreement_id, user_id
+    :return: int 新增的記錄 ID 或 None
+    """
+    sql = """
+    INSERT INTO agreement_approvals (agreement_id, user_id)
+    VALUES (?, ?)
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (
+                data.get('agreement_id'),
+                data.get('user_id')
+            ))
+            conn.commit()
+            return cursor.lastrowid
+    except sqlite3.Error as e:
+        # 如果因為 UNIQUE 約束報錯，表示已同意過
+        print(f"Error in create agreement_approval: {e}")
+        return None
 
-    # 唯一約束：每人每約只能同意一次
-    __table_args__ = (
-        db.UniqueConstraint('agreement_id', 'user_id', name='uq_agreement_user'),
-    )
+def get_all():
+    """
+    取得所有同意記錄
+    :return: list of Row
+    """
+    sql = "SELECT * FROM agreement_approvals"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_all agreement_approvals: {e}")
+        return []
 
-    # 關聯
-    user = db.relationship('User', backref='agreement_approvals')
+def get_by_agreement_id(agreement_id):
+    """
+    取得某公約的所有同意記錄
+    :param agreement_id: int, 公約 ID
+    :return: list of Row
+    """
+    sql = "SELECT * FROM agreement_approvals WHERE agreement_id = ?"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (agreement_id,)).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_by_agreement_id approvals ({agreement_id}): {e}")
+        return []
 
-    def __repr__(self):
-        return f'<AgreementApproval agreement={self.agreement_id} user={self.user_id}>'
+def get_by_id(approval_id):
+    """
+    依 ID 取得單筆同意記錄
+    :param approval_id: int, 同意記錄 ID
+    :return: Row 或 None
+    """
+    sql = "SELECT * FROM agreement_approvals WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (approval_id,)).fetchone()
+    except sqlite3.Error as e:
+        print(f"Error in get_by_id agreement_approval ({approval_id}): {e}")
+        return None
 
-    # ===== CRUD 方法 =====
+def check_exists(agreement_id, user_id):
+    """
+    檢查某個使用者是否已同意過某公約
+    :param agreement_id: int, 公約 ID
+    :param user_id: int, 使用者 ID
+    :return: Row 或 None
+    """
+    sql = "SELECT * FROM agreement_approvals WHERE agreement_id = ? AND user_id = ?"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (agreement_id, user_id)).fetchone()
+    except sqlite3.Error as e:
+        print(f"Error in check_exists agreement_approval: {e}")
+        return None
 
-    @classmethod
-    def create(cls, agreement_id, user_id):
-        """建立同意記錄"""
-        approval = cls(
-            agreement_id=agreement_id,
-            user_id=user_id
-        )
-        db.session.add(approval)
-        db.session.commit()
-        return approval
+def delete_by_agreement_id(agreement_id):
+    """
+    刪除某公約的所有同意記錄 (當公約內容修改時需要重設)
+    :param agreement_id: int, 公約 ID
+    :return: bool 是否刪除成功
+    """
+    sql = "DELETE FROM agreement_approvals WHERE agreement_id = ?"
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (agreement_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in delete_by_agreement_id approvals ({agreement_id}): {e}")
+        return False
 
-    @classmethod
-    def get_all(cls):
-        """取得所有同意記錄"""
-        return cls.query.all()
+def update(approval_id, data):
+    """
+    更新同意記錄 (通常很少使用)
+    """
+    if not data:
+        return False
+    keys = list(data.keys())
+    set_clause = ", ".join([f"{key} = ?" for key in keys])
+    sql = f"UPDATE agreement_approvals SET {set_clause} WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            params = [data[key] for key in keys]
+            params.append(approval_id)
+            cursor.execute(sql, params)
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in update agreement_approval ({approval_id}): {e}")
+        return False
 
-    @classmethod
-    def get_by_id(cls, approval_id):
-        """依 ID 取得同意記錄"""
-        return cls.query.get(approval_id)
-
-    @classmethod
-    def get_by_agreement(cls, agreement_id):
-        """取得某公約的所有同意記錄"""
-        return cls.query.filter_by(agreement_id=agreement_id).all()
-
-    @classmethod
-    def has_approved(cls, agreement_id, user_id):
-        """檢查某使用者是否已對某公約投過同意"""
-        return cls.query.filter_by(
-            agreement_id=agreement_id, user_id=user_id
-        ).first() is not None
-
-    def update(self, **kwargs):
-        """更新同意記錄"""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-        db.session.commit()
-        return self
-
-    def delete(self):
-        """刪除同意記錄"""
-        db.session.delete(self)
-        db.session.commit()
+def delete(approval_id):
+    """
+    刪除單筆同意記錄
+    """
+    sql = "DELETE FROM agreement_approvals WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (approval_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in delete agreement_approval ({approval_id}): {e}")
+        return False

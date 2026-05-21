@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-<<<<<<< HEAD
 {% block title %}{% if item %}編輯物資「{{ item.name }}」{% else %}登記公用物資{% endif %} - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -66,83 +65,3 @@
 </div>
 {% endblock %}
 
-=======
-{% block title %}
-    {% if item %}編輯物資品項 - {{ item.name }}{% else %}新增物資品項{% endif %} - 室友共好
-{% endblock %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-6 col-md-8 col-12">
-        <div class="card card-custom border-0 mb-4">
-            <div class="card-header card-header-custom">
-                <h4 class="mb-0 fw-bold text-dark font-outfit">
-                    <i class="bi {% if item %}bi-pencil-square text-primary{% else %}bi-plus-circle text-success{% endif %} me-2"></i>
-                    {% if item %}編輯物資品項{% else %}新增物資品項{% endif %}
-                </h4>
-            </div>
-            <div class="card-body p-4">
-                {% if item %}
-                <form action="{{ url_for('inventory.update_item', id=item.id) }}" method="POST">
-                {% else %}
-                <form action="{{ url_for('inventory.create_item') }}" method="POST">
-                {% endif %}
-                    
-                    <!-- 物資名稱 -->
-                    <div class="mb-3">
-                        <label for="name" class="form-label fw-semibold">物資名稱 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-style form-control" id="name" name="name" 
-                               placeholder="例如：衛生紙、洗碗精、垃圾袋" 
-                               value="{% if item %}{{ item.name }}{% endif %}" required>
-                    </div>
-
-                    <!-- 單位 -->
-                    <div class="mb-3">
-                        <label for="unit" class="form-label fw-semibold">測量單位 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-style form-control" id="unit" name="unit" 
-                               placeholder="例如：包、瓶、個、箱" 
-                               value="{% if item %}{{ item.unit }}{% endif %}" required>
-                        <div class="form-text">用於顯示數量的單位。</div>
-                    </div>
-
-                    <!-- 初始庫存數量（僅在新增時顯示） -->
-                    {% if not item %}
-                    <div class="mb-3">
-                        <label for="quantity" class="form-label fw-semibold">初始庫存數量</label>
-                        <input type="number" class="form-style form-control" id="quantity" name="quantity" 
-                               min="0" placeholder="0" value="0">
-                        <div class="form-text">建立品項時的目前現有數量。</div>
-                    </div>
-                    {% endif %}
-
-                    <!-- 最低存量門檻 -->
-                    <div class="mb-4">
-                        <label for="min_quantity" class="form-label fw-semibold">最低庫存量（安全門檻）</label>
-                        <input type="number" class="form-style form-control" id="min_quantity" name="min_quantity" 
-                               min="0" placeholder="2" value="{% if item %}{{ item.min_quantity }}{% else %}1{% endif %}">
-                        <div class="form-text text-muted">當庫存數量低於或等於此數值時，系統將會向所有室友發出採購通知。</div>
-                    </div>
-
-                    <!-- 按鈕列 -->
-                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                        {% if item %}
-                        <a href="{{ url_for('inventory.detail_item', id=item.id) }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
-                            <i class="bi bi-x-lg me-1"></i>取消
-                        </a>
-                        {% else %}
-                        <a href="{{ url_for('inventory.list_items') }}" class="btn btn-outline-secondary rounded-pill px-4 hover-lift">
-                            <i class="bi bi-arrow-left me-1"></i>返回列表
-                        </a>
-                        {% endif %}
-                        
-                        <button type="submit" class="btn btn-gradient-primary rounded-pill px-4 hover-lift">
-                            <i class="bi bi-check-lg me-1"></i>儲存變更
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
->>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b

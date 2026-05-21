@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 Models 套件初始化
 匯出所有 sqlite3 Model 模組命名空間，方便其他模組 import
@@ -26,17 +25,3 @@ class DummyDB:
         pass
 
 db = DummyDB()
-=======
-# Models package initialization
-# 匯出各模組，以 Namespace 形式使用，避免 create/get_all 等 CRUD 函式名稱衝突
-
-from . import user
-from . import group
-from . import agreement
-from . import expense
-from . import electricity
-from . import chore
-from . import reminder
-from . import inventory
-from . import notification
->>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b

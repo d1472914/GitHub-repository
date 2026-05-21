@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-<<<<<<< HEAD
 {% block title %}{% if chore %}編輯任務{% else %}新增家事任務{% endif %} - 宿舍共好{% endblock %}
 
 {% block content %}
@@ -78,67 +77,6 @@
                     </button>
                 </div>
             </form>
-=======
-{% block title %}
-    {% if chore %}編輯任務 - 室友共好{% else %}新增任務 - 室友共好{% endif %}
-{% endblock %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-calendar-check-fill text-info me-2"></i>
-                {% if chore %}修改家務「{{ chore.title }}」{% else %}指派新家事任務{% endif %}
-            </div>
-            <div class="card-body p-4">
-                <form action="{% if chore %}{{ url_for('chore.update_chore', id=chore.id) }}{% else %}{{ url_for('chore.create_chore') }}{% endif %}" method="POST">
-                    
-                    <div class="mb-3">
-                        <label for="title" class="form-label font-monospace small text-muted">家務名稱</label>
-                        <input type="text" class="form-control" id="title" name="title" placeholder="例如：倒垃圾、洗浴室、掃廚房地板" value="{{ chore.title if chore else '' }}" required autocomplete="off">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="description" class="form-label font-monospace small text-muted">工作細節描述 (選填)</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="例如：垃圾打包後放到一樓大門口、地板拖地兩次並放乾燥劑...">{{ chore.description if chore else '' }}</textarea>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-4 mb-3 mb-md-0">
-                            <label for="recurrence" class="form-label font-monospace small text-muted">重複週期</label>
-                            <select class="form-select" id="recurrence" name="recurrence" required>
-                                <option value="once" {% if chore and chore.recurrence == 'once' %}selected{% endif %}>單次任務</option>
-                                <option value="daily" {% if chore and chore.recurrence == 'daily' %}selected{% endif %}>每日重複</option>
-                                <option value="weekly" {% if chore and chore.recurrence == 'weekly' %}selected{% endif %}>每週重複</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3 mb-md-0">
-                            <label for="due_date" class="form-label font-monospace small text-muted">執行到期日</label>
-                            <input type="date" class="form-control" id="due_date" name="due_date" value="{{ chore.due_date if chore else '' }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="assigned_to" class="form-label font-monospace small text-muted">指派負責室友</label>
-                            <select class="form-select" id="assigned_to" name="assigned_to" required>
-                                <option value="" disabled {% if not chore %}selected{% endif %}>-- 請指派室友 --</option>
-                                {% for m in members %}
-                                    <option value="{{ m.id }}" {% if chore and chore.assigned_to == m.id %}selected{% endif %}>{{ m.nickname }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('chore.list_chores') }}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill hover-lift">
-                            <i class="bi bi-x-circle me-1"></i>取消
-                        </a>
-                        <button type="submit" class="btn btn-gradient-secondary btn-sm px-4 rounded-pill hover-lift" style="background: var(--secondary-gradient);">
-                            <i class="bi bi-check-circle-fill me-1"></i>{% if chore %}確認修改{% else %}指派任務{% endif %}
-                        </button>
-                    </div>
-                </form>
-            </div>
->>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
         </div>
     </div>
 </div>

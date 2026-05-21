@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 
-<<<<<<< HEAD
 {% block title %}登錄電表度數 - 宿舍共好{% block title_end %}{% endblock %}{% endblock %}
 
 {% block content %}
@@ -34,46 +33,6 @@
                     <button type="submit" class="btn btn-danger px-4"><i class="bi bi-send-fill"></i> 提交度數記錄</button>
                 </div>
             </form>
-=======
-{% block title %}登錄個人電表度數 - 室友共好{% endblock %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card card-custom border-0 shadow">
-            <div class="card-header card-header-custom">
-                <i class="bi bi-speedometer text-warning me-2"></i>登錄本期電表度數
-            </div>
-            <div class="card-body p-4">
-                <div class="alert alert-info border-0 rounded-3 small mb-4">
-                    <i class="bi bi-info-circle-fill me-1"></i>
-                    本期帳單計費期間為：<strong>{{ bill.period_start }} ~ {{ bill.period_end }}</strong>。請至您的分表查看並填寫起始度數與本期結束度數。
-                </div>
-                
-                <form action="{{ url_for('electricity.create_meter_reading', id=bill.id) }}" method="POST">
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label for="start_reading" class="form-label font-monospace small text-muted">本期起始度數</label>
-                            <input type="number" step="0.1" min="0.0" class="form-control" id="start_reading" name="start_reading" placeholder="例如：1250.3" required autocomplete="off">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="end_reading" class="form-label font-monospace small text-muted">本期結束度數</label>
-                            <input type="number" step="0.1" min="0.0" class="form-control" id="end_reading" name="end_reading" placeholder="例如：1375.8" required autocomplete="off">
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('electricity.detail_bill', id=bill.id) }}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill hover-lift">
-                            <i class="bi bi-x-circle me-1"></i>取消
-                        </a>
-                        <button type="submit" class="btn btn-gradient-secondary btn-sm px-4 rounded-pill hover-lift">
-                            <i class="bi bi-check-circle-fill me-1"></i>確認登錄
-                        </button>
-                    </div>
-                </form>
-            </div>
->>>>>>> 1e48de0edac6544d863f36aadea0f725405e001b
         </div>
     </div>
 </div>
