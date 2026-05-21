@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}宿舍共好 — 室友公約與噪音管理系統{% endblock %}</title>
+    <!-- 全站樣式表 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <a class="nav-brand" href="{{ url_for('dashboard.dashboard_page') if 'dashboard' in app.blueprints else '#' }}">宿舍共好</a>
+                <ul class="nav-menu">
+                    {% if current_user and current_user.is_authenticated %}
+                        <li><a href="{{ url_for('dashboard.dashboard_page') }}">儀表板</a></li>
+                        <li><a href="{{ url_for('agreement.agreement_list') if 'agreement' in app.blueprints else '#' }}">公約</a></li>
+                        <li><a href="{{ url_for('expense.expense_list') if 'expense' in app.blueprints else '#' }}">開支</a></li>
+                        <li><a href="{{ url_for('electricity.electricity_list') if 'electricity' in app.blueprints else '#' }}">電費</a></li>
+                        <li><a href="{{ url_for('chore.chore_list') if 'chore' in app.blueprints else '#' }}">家事</a></li>
+                        <li><a href="{{ url_for('reminder.reminder_send') if 'reminder' in app.blueprints else '#' }}">黑臉提醒</a></li>
+                        <li><a href="{{ url_for('inventory.inventory_list') if 'inventory' in app.blueprints else '#' }}">物資</a></li>
+                        <li><a href="{{ url_for('auth.logout') }}">登出 ({{ current_user.nickname }})</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('auth.login_page') }}">登入</a></li>
+                        <li><a href="{{ url_for('auth.register_page') }}">註冊</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        <!-- 訊息閃現 (Flash Messages) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2026 宿舍共好 Roommate Co-Living System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- 全站 JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
