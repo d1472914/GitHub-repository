@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}儀表板 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="welcome-title">哈囉，{{ current_user.nickname }}！</h1>
+        <p class="group-info">當前群組：<strong>{{ group.name }}</strong> | 身份：<span class="badge badge-primary">{{ '管理員' if current_user.role == 'admin' else '室友' }}</span></p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('group.settings_page') }}" class="btn btn-secondary">管理房間</a>
+        <a href="{{ url_for('agreement.new_page') }}" class="btn btn-primary">+ 新增公約提案</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 待同意公約 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning-light">
+                <h3 class="card-title text-warning-dark">⚠️ 待表決/投票的公約提案 ({{ agreements_pending|length }})</h3>
+            </div>
+            <div class="card-body">
+                {% if agreements_pending %}
+                    <ul class="agreement-dashboard-list">
+                        {% for ag in agreements_pending %}
+                            <li class="agreement-dashboard-item">
+                                <div>
+                                    <span class="category-tag">{{ ag.category }}</span>
+                                    <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="agreement-title-link">{{ ag.title }}</a>
+                                    <p class="text-muted text-sm">由 {{ ag.creator.nickname }} 提案 | 建立於 {{ ag.created_at.strftime('%Y-%m-%d') }}</p>
+                                </div>
+                                <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-warning">去投票</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted py-3 text-center">目前沒有需要您表決的公約提案，真棒！</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 生效中公約 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success-light">
+                <h3 class="card-title text-success-dark">✅ 已生效的室友公約 ({{ agreements_active|length }})</h3>
+            </div>
+            <div class="card-body">
+                {% if agreements_active %}
+                    <ul class="agreement-dashboard-list">
+                        {% for ag in agreements_active %}
+                            <li class="agreement-dashboard-item">
+                                <div>
+                                    <span class="category-tag bg-success-tag">{{ ag.category }}</span>
+                                    <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="agreement-title-link">{{ ag.title }}</a>
+                                    <p class="text-muted text-sm">最新版本：v{{ ag.versions.first().version_number if ag.versions.first() else '1' }} | 生效時間：{{ ag.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                                </div>
+                                <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-primary">查看</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="text-center pt-2">
+                        <a href="{{ url_for('agreement.agreement_list') }}" class="btn-link">查看全部公約 &rarr;</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted py-3 text-center">目前尚未有任何生效中的生活公約。</p>
+                    <div class="text-center">
+                        <a href="{{ url_for('agreement.new_page') }}" class="btn btn-primary btn-sm">發起第一個提案</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

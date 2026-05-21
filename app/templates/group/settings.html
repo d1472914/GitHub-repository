@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}群組設定 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">群組基本資料</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('group.settings_update') }}" method="POST">
+                        <div class="form-group">
+                            <label for="name">群組名稱</label>
+                            <input type="text" id="name" name="name" value="{{ group.name }}" {% if current_user.role != 'admin' %}disabled{% endif %} class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>邀請碼（點擊以複製）</label>
+                            <div class="invite-code-container" onclick="copyInviteCode('{{ group.invite_code }}')">
+                                <span class="invite-code-text">{{ group.invite_code }}</span>
+                                <span class="copy-badge">點擊複製</span>
+                            </div>
+                            <small class="text-muted">提供此邀請碼給其他室友註冊後輸入，即可將他們加入此群組。</small>
+                        </div>
+                        
+                        {% if current_user.role == 'admin' %}
+                            <button type="submit" class="btn btn-primary">更新名稱</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">室友成員名單 ({{ group.members|length }} 人)</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="roommate-list">
+                        {% for member in group.members %}
+                            <li class="roommate-item">
+                                <div class="roommate-info">
+                                    <div class="avatar">{{ member.nickname[0] }}</div>
+                                    <div class="name-role">
+                                        <span class="nickname">{{ member.nickname }}</span>
+                                        <span class="email text-muted">{{ member.email }}</span>
+                                    </div>
+                                </div>
+                                <span class="badge {% if member.role == 'admin' %}badge-admin{% else %}badge-member{% endif %}">
+                                    {{ '管理員' if member.role == 'admin' else '室友' }}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyInviteCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        alert('邀請碼已複製到剪貼簿！');
+    }).catch(err => {
+        console.error('複製失敗：', err);
+    });
+}
+</script>
+{% endblock %}

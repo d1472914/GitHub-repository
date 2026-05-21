@@ -17,11 +17,11 @@
                     {% if current_user and current_user.is_authenticated %}
                         <li><a href="{{ url_for('dashboard.dashboard_page') }}">儀表板</a></li>
                         <li><a href="{{ url_for('agreement.agreement_list') if 'agreement' in app.blueprints else '#' }}">公約</a></li>
-                        <li><a href="{{ url_for('expense.expense_list') if 'expense' in app.blueprints else '#' }}">開支</a></li>
-                        <li><a href="{{ url_for('electricity.electricity_list') if 'electricity' in app.blueprints else '#' }}">電費</a></li>
-                        <li><a href="{{ url_for('chore.chore_list') if 'chore' in app.blueprints else '#' }}">家事</a></li>
-                        <li><a href="{{ url_for('reminder.reminder_send') if 'reminder' in app.blueprints else '#' }}">黑臉提醒</a></li>
-                        <li><a href="{{ url_for('inventory.inventory_list') if 'inventory' in app.blueprints else '#' }}">物資</a></li>
+                        <li><a href="{{ url_for('expense.list_expenses') if 'expense' in app.blueprints else '#' }}">開支</a></li>
+                        <li><a href="{{ url_for('electricity.list_bills') if 'electricity' in app.blueprints else '#' }}">電費</a></li>
+                        <li><a href="{{ url_for('chore.list_chores') if 'chore' in app.blueprints else '#' }}">家事</a></li>
+                        <li><a href="{{ url_for('reminder.send_page') if 'reminder' in app.blueprints else '#' }}">黑臉提醒</a></li>
+                        <li><a href="{{ url_for('inventory.list_items') if 'inventory' in app.blueprints else '#' }}">物資</a></li>
                         <li><a href="{{ url_for('auth.logout') }}">登出 ({{ current_user.nickname }})</a></li>
                     {% else %}
                         <li><a href="{{ url_for('auth.login_page') }}">登入</a></li>

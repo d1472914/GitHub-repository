@@ -51,4 +51,15 @@ def create_app(test_config=None):
     from app.routes import register_blueprints
     register_blueprints(app)
 
+    # 根路由自動重導向至儀表板
+    from flask import redirect, url_for
+    @app.route('/')
+    def index():
+        return redirect(url_for('dashboard.dashboard_page'))
+
+    # 注入 app 變數至 Jinja2 全域上下文，供 base.html 偵測已註冊的 Blueprints
+    @app.context_processor
+    def inject_app():
+        return dict(app=app)
+
     return app
