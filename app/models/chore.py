@@ -130,31 +130,6 @@ def update(chore_id, data):
 
 def mark_completed(chore_id):
     """
-    標記家事為已完成。
-    
-    Args:
-        chore_id (int): 家事 ID。
-        
-    Returns:
-        bool: 是否標記成功。
-    """
-    sql = "UPDATE chores SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?"
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (chore_id,))
-        conn.commit()
-        return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        logging.error(f"Error marking chore as completed: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
     將家事任務標記為已完成，自動寫入完成時間 (completed_at)
     :param chore_id: int, 任務 ID
     :return: bool 是否成功

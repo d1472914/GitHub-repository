@@ -3,23 +3,17 @@
 {% block title %}建立群組 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="auth-wrapper">
-    <div class="auth-card">
-        <h2 class="auth-title">建立新群組</h2>
-        <p class="auth-subtitle">為您的寢室或租屋處建立一個專屬群組，並邀請室友加入</p>
-        
-        <form action="{{ url_for('group.create') }}" method="POST" class="auth-form">
-            <div class="form-group">
-                <label for="name">房間 / 群組名稱</label>
-                <input type="text" id="name" name="name" required placeholder="例如：男一舍 312 室 或 永康街租屋處" class="form-control">
-            </div>
-            
-            <button type="submit" class="btn btn-primary btn-block">建立群組</button>
-        </form>
-        
-        <div class="auth-footer">
-            <p>想要加入室友已建立好的群組嗎？ <a href="{{ url_for('group.join_page') }}">加入群組</a></p>
+<div class="card" style="max-width: 600px; margin: 40px auto;">
+    <h2 class="card-title">🏢 建立寢室 / 租屋群組</h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px; line-height: 1.5;">
+        建立一個專屬的群組，您可以邀請您的室友一同加入，共同建立公約、記錄開支與分工家事。
+    </p>
+    <form action="/group/create" method="POST">
+        <div class="form-group">
+            <label class="form-label" for="group_name">群組名稱</label>
+            <input type="text" id="group_name" name="name" class="form-control" placeholder="例如：312寢室、幸福公寓A棟" required>
         </div>
-    </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">確認建立群組</button>
+    </form>
 </div>
 {% endblock %}

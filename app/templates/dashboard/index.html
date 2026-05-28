@@ -6,179 +6,113 @@
 <div class="row g-4">
     <!-- 歡迎與群組資訊 -->
     <div class="col-12">
-        <div class="card p-4 text-white border-0 shadow-sm" style="background: var(--primary-gradient);">
+        <div class="card p-4 bg-gradient-dark">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div>
-                    <h1 class="h3 mb-2 font-heading text-white">🏠 歡迎回到 宿舍共好，{{ current_user.nickname }}！</h1>
-                    <p class="text-white-50 mb-0">當前群組：<strong>{{ group.name if group else '無群組' }}</strong> | 身份：<span class="badge bg-light text-primary">{{ '管理員' if current_user.role == 'admin' else '室友' }}</span></p>
+                    <h1 class="h3 mb-2 font-heading text-white">🏠 歡迎回到 宿舍共好</h1>
+                    <p class="text-muted mb-0">室友公約與噪音管理系統 — 讓共同租屋生活更加融洽與和諧 ✨</p>
                 </div>
                 {% if group %}
-                    <div class="bg-white bg-opacity-20 border border-white border-opacity-25 rounded-3 p-3 text-end">
-                        <span class="text-white-50 d-block small">目前群組邀請碼</span>
-                        <strong class="text-white h5 mb-1 d-block font-monospace">{{ group.invite_code }}</strong>
+                    <div class="bg-dark bg-opacity-50 border border-secondary border-opacity-25 rounded-3 p-3 text-end">
+                        <span class="text-muted d-block small">目前群組</span>
+                        <strong class="text-white h5 mb-1 d-block">{{ group.name }}</strong>
+                        <span class="badge bg-primary fs-7 font-heading">邀請碼：{{ group.invite_code }}</span>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- 左半邊：生活公約與待辦家事 -->
+    <!-- 左半邊：最新動態與待辦家事 -->
     <div class="col-lg-8">
         <div class="d-flex flex-column gap-4">
-            
-            <!-- 待表決/投票的公約提案 -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-warning bg-opacity-10 border-0 py-3">
-                    <h5 class="mb-0 text-warning-emphasis"><i class="bi bi-exclamation-triangle-fill me-2"></i>待表決的公約提案 ({{ agreements_pending|length }})</h5>
-                </div>
-                <div class="card-body">
-                    {% if agreements_pending %}
-                        <div class="list-group list-group-flush">
-                            {% for ag in agreements_pending %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-0 border-bottom border-light">
-                                    <div>
-                                        <span class="badge bg-warning text-dark me-2">{{ ag.category }}</span>
-                                        <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="fw-semibold text-decoration-none text-dark">{{ ag.title }}</a>
-                                        <p class="text-muted mb-0 small mt-1">由 {{ ag.creator.nickname }} 提案 | 建立時間：{{ ag.created_at.strftime('%Y-%m-%d') }}</p>
-                                    </div>
-                                    <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-warning rounded-pill">去投票</a>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted mb-0 py-3 text-center">目前沒有需要您表決的公約提案，太棒了！</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- 已生效的室友公約 -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-success bg-opacity-10 border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-success-emphasis"><i class="bi bi-check-circle-fill me-2"></i>已生效的室友公約 ({{ agreements_active|length }})</h5>
-                    <a href="{{ url_for('agreement.new_page') }}" class="btn btn-sm btn-gradient-primary rounded-pill">+ 新增提案</a>
-                </div>
-                <div class="card-body">
-                    {% if agreements_active %}
-                        <div class="list-group list-group-flush">
-                            {% for ag in agreements_active %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-0 border-bottom border-light">
-                                    <div>
-                                        <span class="badge bg-success me-2">{{ ag.category }}</span>
-                                        <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="fw-semibold text-decoration-none text-dark">{{ ag.title }}</a>
-                                        <p class="text-muted mb-0 small mt-1">生效時間：{{ ag.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                                    </div>
-                                    <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-primary rounded-pill">查看</a>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        <div class="text-center pt-3">
-                            <a href="{{ url_for('agreement.agreement_list') }}" class="text-decoration-none text-primary fw-semibold small">查看全部公約 &rarr;</a>
-                        </div>
-                    {% else %}
-                        <p class="text-muted mb-0 py-3 text-center">目前尚未有任何生效中的生活公約。</p>
-                    {% endif %}
-                </div>
-            </div>
-
             <!-- 待完成家事 -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-primary bg-opacity-10 border-0 py-3">
-                    <h5 class="mb-0 text-primary-emphasis"><i class="bi bi-calendar-check me-2"></i>您的待完成家事 ({{ pending_chores|length }})</h5>
-                </div>
-                <div class="card-body">
+            <div class="card">
+                <h3 class="card-title text-warning"><i class="bi bi-calendar-check"></i> 您的待完成家事</h3>
+                <div class="mt-3">
                     {% if pending_chores %}
-                        <div class="list-group list-group-flush">
+                        <div class="list-group list-group-flush bg-transparent">
                             {% for chore in pending_chores %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-0 border-bottom border-light">
+                                <div class="list-group-item bg-transparent text-white border-bottom border-secondary border-opacity-25 py-3 px-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <div>
-                                        <h6 class="mb-1 text-dark fw-semibold">{{ chore.title }}</h6>
-                                        <small class="text-danger"><i class="bi bi-clock me-1"></i>期限：{{ chore.due_date }}</small>
+                                        <h5 class="mb-1 text-white-50 font-heading">{{ chore.title }}</h5>
+                                        <small class="text-danger"><i class="bi bi-clock"></i> 期限：{{ chore.due_date }}</small>
                                         {% if chore.description %}
                                             <p class="text-muted mb-0 small mt-1">{{ chore.description }}</p>
                                         {% endif %}
                                     </div>
-                                    <form action="{{ url_for('chore.complete', chore_id=chore.id) }}" method="POST" class="m-0">
-                                        <button type="submit" class="btn btn-sm btn-success px-3 rounded-pill"><i class="bi bi-check-lg me-1"></i>完成</button>
+                                    <form action="/chores/{{ chore.id }}/complete" method="POST" class="m-0">
+                                        <button type="submit" class="btn btn-sm btn-success px-3 rounded-pill"><i class="bi bi-check-lg"></i> 完成</button>
                                     </form>
                                 </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="text-center py-3">
-                            <p class="text-muted mb-0">🎉 目前沒有需要您處理的家事，太棒了！</p>
+                        <div class="text-center py-4">
+                            <div class="display-6 text-muted mb-2">🎉</div>
+                            <p class="text-muted mb-0">目前沒有需要您處理的家事，太棒了！</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
 
-        </div>
-    </div>
-
-    <!-- 右半邊：通知與快捷選單 -->
-    <div class="col-lg-4">
-        <div class="d-flex flex-column gap-4">
-            
             <!-- 最新通知 -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-info bg-opacity-10 border-0 py-3">
-                    <h5 class="mb-0 text-info-emphasis"><i class="bi bi-bell-fill me-2"></i>最新通知與公告</h5>
-                </div>
-                <div class="card-body">
+            <div class="card">
+                <h3 class="card-title text-info"><i class="bi bi-bell"></i> 最新通知與公告</h3>
+                <div class="mt-3">
                     {% if notifications %}
-                        <div class="list-group list-group-flush">
+                        <div class="list-group list-group-flush bg-transparent">
                             {% for notice in notifications %}
-                                <div class="list-group-item py-3 px-0 border-bottom border-light">
+                                <div class="list-group-item bg-transparent text-white border-bottom border-secondary border-opacity-25 py-3 px-0">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span class="badge bg-secondary">通知</span>
                                         <small class="text-muted">{{ notice.created_at }}</small>
                                     </div>
-                                    <p class="mb-0 text-dark small">{{ notice.message }}</p>
+                                    <p class="mb-0 text-white-50 small">{{ notice.message }}</p>
                                 </div>
                             {% endfor %}
                         </div>
                     {% else %}
-                        <div class="text-center py-3">
+                        <div class="text-center py-4">
                             <p class="text-muted mb-0"><i class="bi bi-chat-left-dots me-2"></i>暫無新的未讀通知</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- 系統快捷選單 -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light border-0 py-3">
-                    <h5 class="mb-0 text-dark"><i class="bi bi-grid-fill me-2"></i>系統快捷選單</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('agreement.agreement_list') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-file-earmark-text text-success me-2 fs-5"></i> 室友生活公約</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                        <a href="{{ url_for('expense.list_page') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-cash-coin text-warning me-2 fs-5"></i> 共同記帳本</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                        <a href="{{ url_for('electricity.list_page') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-lightning-charge text-danger me-2 fs-5"></i> 智慧比例分攤電費</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                        <a href="{{ url_for('chore.list_page') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-calendar-check text-info me-2 fs-5"></i> 隱形家事管家</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                        <a href="{{ url_for('reminder.send_page') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-megaphone text-primary me-2 fs-5"></i> 友善匿名黑臉提醒</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                        <a href="{{ url_for('inventory.list_page') }}" class="btn btn-outline-light text-start text-dark border py-2.5 px-3 d-flex align-items-center justify-content-between hover-lift">
-                            <span><i class="bi bi-box-seam text-secondary me-2 fs-5"></i> 宿舍物資庫存</span>
-                            <i class="bi bi-chevron-right small text-muted"></i>
-                        </a>
-                    </div>
-                </div>
+    <!-- 右半邊：快捷操作與快捷入口 -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <h3 class="card-title text-primary"><i class="bi bi-lightning-charge-fill"></i> 系統快捷選單</h3>
+            <p class="text-muted small">點擊快速前往宿舍各項共用管理工具：</p>
+            <div class="d-grid gap-3 mt-3">
+                <a href="/agreements" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-file-earmark-ruled text-success me-2 fs-5"></i> 室友生活公約</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="/expenses" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-cash-coin text-warning me-2 fs-5"></i> 共同記帳本</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="/electricity" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-lightning-charge text-danger me-2 fs-5"></i> 智慧比例分攤電費</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="/chores" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-broom text-info me-2 fs-5"></i> 隱形家事管家</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="/reminders/send" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-megaphone text-primary me-2 fs-5"></i> 友善匿名黑臉提醒</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="/inventory" class="btn btn-secondary text-start py-3 px-3 d-flex align-items-center justify-content-between border border-secondary border-opacity-25 bg-transparent text-white-50">
+                    <span><i class="bi bi-box-seam text-light me-2 fs-5"></i> 宿舍物資庫存</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
             </div>
-
         </div>
     </div>
 </div>

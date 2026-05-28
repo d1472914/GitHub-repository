@@ -6,8 +6,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('宿舍共好系統載入成功！');
     
-    // 自動淡出警告訊息 (Alert & Flash)
-    const alerts = document.querySelectorAll('.alert, .flash-message');
+    // 自動淡出警告訊息 (Alert)
+    const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {
         setTimeout(() => {
             alert.style.transition = 'opacity 0.5s ease';

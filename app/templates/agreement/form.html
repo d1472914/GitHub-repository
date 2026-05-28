@@ -1,54 +1,58 @@
 {% extends "base.html" %}
 
-{% block title %}{{ '編輯公約' if mode == 'edit' else '發起公約提案' }} - 宿舍共好{% endblock %}
+{% block title %}{% if agreement %}編輯公約{% else %}新增公約提案{% endif %} - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="form-wrapper">
-    <div class="card max-w-xl mx-auto">
-        <div class="card-header">
-            <h2 class="card-title">{{ '編輯公約提案' if mode == 'edit' else '發起公約提案' }}</h2>
-            <p class="text-muted text-sm">
-                {% if mode == 'edit' %}
-                    修改現有公約內容。提交後將會<strong>重設所有人的投票狀態</strong>，並重新進入待表決狀態。
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="card-title text-success mb-2">
+                {% if agreement %}
+                    <i class="bi bi-pencil-square"></i> 編輯公約提案
                 {% else %}
-                    提出一項新的生活規範規範。提案發起後，需要群組內<strong>所有成員 100% 同意</strong>才能正式生效。
+                    <i class="bi bi-file-earmark-plus"></i> 發起公約提案
+                {% endif %}
+            </h2>
+            <p class="text-muted small mb-4">
+                {% if agreement %}
+                    修改現有的公約條款。提醒您，內容變更將會重置所有室友的同意記錄，需要重新表決投票。
+                {% else %}
+                    提出一個新的生活規範。全體室友在系統上點選同意後，此條款便會正式生效！
                 {% endif %}
             </p>
-        </div>
-        
-        <div class="card-body">
-            <form action="{{ url_for('agreement.update', id=agreement.id) if mode == 'edit' else url_for('agreement.create') }}" method="POST">
-                <div class="form-group">
-                    <label for="title">公約標題</label>
-                    <input type="text" id="title" name="title" class="form-control" placeholder="例如：深夜 11 點後淋浴噪音限制" required value="{{ agreement.title if agreement else '' }}">
+
+            <form action="{% if agreement %}/agreements/{{ agreement.id }}/update{% else %}/agreements{% endif %}" method="POST">
+                <!-- 標題 -->
+                <div class="form-group mb-3">
+                    <label class="form-label" for="title">公約標題</label>
+                    <input type="text" id="title" name="title" class="form-control" placeholder="例如：深夜十一點後降低音量、每週日浴室清潔輪值" value="{% if agreement %}{{ agreement.title }}{% endif %}" required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="category">公約類別</label>
-                    <select id="category" name="category" class="form-control" required>
-                        <option value="" disabled {{ 'selected' if not agreement else '' }}>-- 請選擇類別 --</option>
-                        <option value="噪音管理" {{ 'selected' if agreement and agreement.category == '噪音管理' else '' }}>噪音管理</option>
-                        <option value="衛生清潔" {{ 'selected' if agreement and agreement.category == '衛生清潔' else '' }}>衛生清潔</option>
-                        <option value="費用分攤" {{ 'selected' if agreement and agreement.category == '費用分攤' else '' }}>費用分攤</option>
-                        <option value="其他約定" {{ 'selected' if agreement and agreement.category == '其他約定' else '' }}>其他約定</option>
+
+                <!-- 類別 -->
+                <div class="form-group mb-3">
+                    <label class="form-label" for="category">公約類別</label>
+                    <select id="category" name="category" class="form-select form-control" required>
+                        <option value="" disabled {% if not agreement %}selected{% endif %}>請選擇類別...</option>
+                        <option value="生活作息" {% if agreement and agreement.category == '生活作息' %}selected{% endif %}>💤 生活作息</option>
+                        <option value="環境清潔" {% if agreement and agreement.category == '環境清潔' %}selected{% endif %}>🧹 環境清潔</option>
+                        <option value="物品共用" {% if agreement and agreement.category == '物品共用' %}selected{% endif %}>🧴 物品共用</option>
+                        <option value="訪客噪音" {% if agreement and agreement.category == '訪客噪音' %}selected{% endif %}>📢 訪客噪音</option>
+                        <option value="其他" {% if agreement and agreement.category == '其他' %}selected{% endif %}>✨ 其他</option>
                     </select>
                 </div>
-                
-                <div class="form-group">
-                    <label for="content">公約條文詳細內容</label>
-                    <textarea id="content" name="content" rows="8" class="form-control" placeholder="請詳細說明此公約的具體規則、處罰或執行方式..." required>{{ agreement.content if agreement else '' }}</textarea>
+
+                <!-- 內容 -->
+                <div class="form-group mb-4">
+                    <label class="form-label" for="content">公約條文詳細內容</label>
+                    <textarea id="content" name="content" rows="6" class="form-control" placeholder="請詳細寫下約定內容、違規處理等具體細則，字數與說明越清晰越好。" required>{% if agreement %}{{ agreement.content }}{% endif %}</textarea>
                 </div>
-                
-                {% if mode == 'edit' %}
-                    <div class="form-group bg-warning-light p-3 rounded">
-                        <label for="change_summary" class="text-warning-dark font-bold">此次修訂理由 (將記錄於版本歷史)</label>
-                        <input type="text" id="change_summary" name="change_summary" class="form-control" placeholder="例如：放寬熱水器維修時間 或 補充特定情況說明" required>
-                    </div>
-                {% endif %}
-                
-                <div class="form-actions pt-3">
-                    <a href="{{ url_for('agreement.detail', id=agreement.id) if mode == 'edit' else url_for('agreement.agreement_list') }}" class="btn btn-secondary">取消</a>
-                    <button type="submit" class="btn btn-primary">{{ '提交修改提案' if mode == 'edit' else '發起提案' }}</button>
+
+                <!-- 按鈕 -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% if agreement %}/agreements/{{ agreement.id }}{% else %}/agreements{% endif %}" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        {% if agreement %}<i class="bi bi-save"></i> 提交變更並重設表決{% else %}<i class="bi bi-send"></i> 發表提案{% endif %}
+                    </button>
                 </div>
             </form>
         </div>

@@ -86,36 +86,6 @@ def get_by_user(user_id):
     except sqlite3.Error as e:
         print(f"Error in get_by_user notifications ({user_id}): {e}")
         return []
-    finally:
-        if conn:
-            conn.close()
-
-def mark_all_read(user_id):
-    """
-    將使用者的所有未讀通知標記為已讀。
-    
-    Args:
-        user_id (int): 使用者 ID。
-        
-    Returns:
-        bool: 是否標記成功。
-    """
-    sql = "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0"
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (user_id,))
-        conn.commit()
-        return True # 不論原本有沒有未讀通知，只要執行成功都算成功
-    except sqlite3.Error as e:
-        logging.error(f"Error marking all notifications as read: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
 
 def get_unread_by_user(user_id):
     """

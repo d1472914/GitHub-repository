@@ -269,17 +269,6 @@ def submit_meter(bill_id):
         return redirect(url_for('electricity.detail_page', bill_id=bill_id))
 
     except Exception as e:
-        flash(f"更新繳費狀態失敗：{e}", "danger")
-        
-    # 重導向回上一頁
-    ref = request.referrer or url_for('electricity.list_bills')
-    return redirect(ref)
-
-@electricity_bp.route('/electricity/estimate', methods=['GET'])
-@login_required
-def estimate():
-    return render_template('electricity/estimate.html')
-
         print(f"Error submitting meter reading: {e}")
         flash("登錄電表時發生伺服器錯誤。", "error")
         return redirect(url_for('electricity.list_page'))

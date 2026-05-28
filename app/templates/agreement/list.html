@@ -1,121 +1,50 @@
 {% extends "base.html" %}
 
-{% block title %}室友生活公約 - 宿舍共好{% endblock %}
+{% block title %}室友公約記錄 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
-    <div>
-        <h1 class="welcome-title">室友生活公約</h1>
-        <p class="group-info">在此建立、表決與查看房間內的生活公約，確保彼此生活作息不被打擾。</p>
+<div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="card-title text-success mb-1"><i class="bi bi-file-earmark-ruled"></i> 室友公約記錄</h2>
+            <p class="text-muted mb-0 small">全體室友表決通過後，即成為具有約束力的宿舍條款。</p>
+        </div>
+        <a href="/agreements/new" class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-lg"></i> 新增公約提案</a>
     </div>
-    <div class="header-actions">
-        <a href="{{ url_for('agreement.new_page') }}" class="btn btn-primary">+ 發起新公約提案</a>
+
+    <!-- 列表清單 -->
+    <div class="row g-4">
+        {% if agreements %}
+            {% for agreement in agreements %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 p-3 bg-dark bg-opacity-25 border border-secondary border-opacity-25 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-secondary px-2.5 py-1">{{ agreement.category }}</span>
+                                {% if agreement.status == 'active' %}
+                                    <span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 rounded-pill px-3 py-1"><i class="bi bi-patch-check"></i> 已生效</span>
+                                {% else %}
+                                    <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-1"><i class="bi bi-hourglass-split"></i> 審核中</span>
+                                {% endif %}
+                            </div>
+                            <h4 class="h5 text-white mb-2 font-heading">{{ agreement.title }}</h4>
+                            <p class="text-muted small text-truncate-3" style="min-height: 4.5rem; line-height: 1.5;">{{ agreement.content }}</p>
+                        </div>
+                        <div class="mt-3 pt-3 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                            <span class="text-muted small"><i class="bi bi-calendar3"></i> {{ agreement.created_at.split(' ')[0] if agreement.created_at else '' }}</span>
+                            <a href="/agreements/{{ agreement.id }}" class="btn btn-sm btn-outline-info rounded-pill px-3">查看詳情 <i class="bi bi-arrow-right"></i></a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="display-4 text-muted mb-3"><i class="bi bi-journals"></i></div>
+                <h4 class="text-white-50">目前尚無公約提案</h4>
+                <p class="text-muted">快去為宿舍建立第一條共好公約吧！</p>
+                <a href="/agreements/new" class="btn btn-primary mt-3 px-4"><i class="bi bi-plus-lg"></i> 新增提案</a>
+            </div>
+        {% endif %}
     </div>
 </div>
-
-<div class="tabs-container">
-    <div class="tabs-header">
-        <button class="tab-btn active" onclick="switchTab('active-pane', this)">已生效公約 ({{ agreements_active|length }})</button>
-        <button class="tab-btn" onclick="switchTab('pending-pane', this)">審核表決中 ({{ agreements_pending|length }})</button>
-        <button class="tab-btn" onclick="switchTab('rejected-pane', this)">已否決提案 ({{ agreements_rejected|length }})</button>
-    </div>
-    
-    <div class="tabs-content">
-        <!-- 已生效公約 -->
-        <div id="active-pane" class="tab-pane active">
-            {% if agreements_active %}
-                <div class="agreement-grid">
-                    {% for ag in agreements_active %}
-                        <div class="agreement-card border-success">
-                            <div class="card-header">
-                                <span class="badge badge-success">已生效</span>
-                                <span class="category-tag">{{ ag.category }}</span>
-                            </div>
-                            <div class="card-body">
-                                <h3 class="agreement-title">{{ ag.title }}</h3>
-                                <p class="agreement-snippet">{{ ag.content|truncate(80) }}</p>
-                            </div>
-                            <div class="card-footer">
-                                <span class="text-xs text-muted">版本 v{{ ag.versions.first().version_number if ag.versions.first() else '1' }}</span>
-                                <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-primary">查看條文</a>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-muted text-center py-5">目前沒有已生效的公約。快去發起提案並讓室友投票吧！</p>
-            {% endif %}
-        </div>
-        
-        <!-- 審核表決中 -->
-        <div id="pending-pane" class="tab-pane">
-            {% if agreements_pending %}
-                <div class="agreement-grid">
-                    {% for ag in agreements_pending %}
-                        <div class="agreement-card border-warning">
-                            <div class="card-header">
-                                <span class="badge badge-warning">表決中</span>
-                                <span class="category-tag">{{ ag.category }}</span>
-                            </div>
-                            <div class="card-body">
-                                <h3 class="agreement-title">{{ ag.title }}</h3>
-                                <p class="agreement-snippet">{{ ag.content|truncate(80) }}</p>
-                            </div>
-                            <div class="card-footer">
-                                <span class="text-xs text-muted">由 {{ ag.creator.nickname }} 提案</span>
-                                <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-warning">去表決</a>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-muted text-center py-5">目前沒有正在表決中的公約提案。</p>
-            {% endif %}
-        </div>
-
-        <!-- 已否決提案 -->
-        <div id="rejected-pane" class="tab-pane">
-            {% if agreements_rejected %}
-                <div class="agreement-grid">
-                    {% for ag in agreements_rejected %}
-                        <div class="agreement-card border-danger">
-                            <div class="card-header">
-                                <span class="badge badge-danger">已否決</span>
-                                <span class="category-tag">{{ ag.category }}</span>
-                            </div>
-                            <div class="card-body">
-                                <h3 class="agreement-title">{{ ag.title }}</h3>
-                                <p class="agreement-snippet">{{ ag.content|truncate(80) }}</p>
-                            </div>
-                            <div class="card-footer">
-                                <span class="text-xs text-muted">提案者：{{ ag.creator.nickname }}</span>
-                                <a href="{{ url_for('agreement.detail', id=ag.id) }}" class="btn btn-sm btn-outline-danger">查看詳情</a>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-muted text-center py-5">目前沒有被否決的公約提案。</p>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<script>
-function switchTab(paneId, btnEl) {
-    // 隱藏所有 tab-pane
-    const panes = document.querySelectorAll('.tab-pane');
-    panes.forEach(pane => pane.classList.remove('active'));
-    
-    // 取消所有 tab-btn 的 active
-    const btns = document.querySelectorAll('.tab-btn');
-    btns.forEach(btn => btn.classList.remove('active'));
-    
-    // 顯示目標 pane
-    document.getElementById(paneId).classList.add('active');
-    
-    // 啟用目前的 btn
-    btnEl.classList.add('active');
-}
-</script>
 {% endblock %}
