@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}室友提醒統計分析 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="card-title text-info mb-0"><i class="bi bi-bar-chart-line"></i> 宿舍生活摩擦統計分析 (管理專用)</h2>
+                <a href="/dashboard" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> 返回儀表板</a>
+            </div>
+
+            <p class="text-muted small mb-4">
+                此處分析彙整目前群組內發出的所有匿名提醒類別比例，方便宿舍管理者掌握大家最常遭遇的生活習慣衝突點，以作為調整「室友公約」的參考依據。 (⚠️ 統計數據完全匿名化，保護個人隱私。)
+            </p>
+
+            <div class="row g-4 align-items-center">
+                <!-- 圖表區域 -->
+                <div class="col-md-6 text-center">
+                    <div class="chart-container" style="position: relative; height:250px; width:100%">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+                <!-- 數字指標 -->
+                <div class="col-md-6">
+                    <h3 class="h6 text-white mb-3">各類別提醒累計次數：</h3>
+                    <div class="d-flex flex-column gap-2">
+                        {% if stats %}
+                            {% for item in stats %}
+                                <div class="d-flex justify-content-between align-items-center p-2.5 bg-dark bg-opacity-20 border border-secondary border-opacity-20 rounded-3">
+                                    <span class="text-white-50">{{ item.category }}</span>
+                                    <span class="badge bg-primary rounded-pill font-heading px-3 py-1.5">{{ item.count }} 次</span>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">暫無統計數據，代表大家都相處融洽！</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('statsChart').getContext('2d');
+        var categories = {{ categories|tojson }};
+        var counts = {{ counts|tojson }};
+        
+        if (categories.length === 0) {
+            categories = ['暫無數據'];
+            counts = [0];
+        }
+
+        var myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: '匿名提醒次數',
+                    data: counts,
+                    backgroundColor: [
+                        'rgba(99, 102, 241, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(14, 165, 233, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(99, 102, 241, 1)',
+                        'rgba(16, 185, 129, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(14, 165, 233, 1)'
+                    ],
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            font: {
+                                family: 'Inter'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

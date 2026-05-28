@@ -230,7 +230,7 @@ def delete(id):
     if not agreement or agreement.group_id != current_user.group_id:
         return abort(403)
 
-    # 限制管理員或提案人才能刪除
+    # 限制管理員 or 提案人才能刪除
     if current_user.role != 'admin' and agreement.created_by != current_user.id:
         flash('只有管理員或提案人才能刪除此公約。', 'danger')
         return redirect(url_for('agreement.detail', id=id))

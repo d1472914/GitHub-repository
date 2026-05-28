@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}家事輪值日曆 - 宿舍共好{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<style>
+    .fc {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 20px;
+        color: var(--text-main);
+    }
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .fc-daygrid-day-number, .fc-col-header-cell-cushion {
+        color: var(--text-muted) !important;
+        text-decoration: none !important;
+    }
+    .fc-day-today {
+        background: rgba(99, 102, 241, 0.05) !important;
+    }
+    .fc-event {
+        cursor: pointer;
+        padding: 2px 4px;
+        font-size: 0.825rem;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="card-title text-info mb-1"><i class="bi bi-calendar3"></i> 家事輪值排班表</h2>
+            <p class="text-muted mb-0 small">直觀查看每月輪替家事進度，點擊行事曆中的項目可快速查看。</p>
+        </div>
+        <a href="/chores" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> 返回任務列表</a>
+    </div>
+
+    <!-- 月曆容器 -->
+    <div id="calendar" style="min-height: 500px;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var eventsData = {{ events|tojson }};
+        
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'zh-tw',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek'
+            },
+            buttonText: {
+                today: '今天',
+                month: '月',
+                week: '週'
+            },
+            events: eventsData,
+            eventClick: function(info) {
+                // 點擊事件跳轉到任務詳情 / 編輯頁
+                window.location.href = '/chores/' + info.event.id + '/edit';
+            }
+        });
+        calendar.render();
+    });
+</script>
+{% endblock %}

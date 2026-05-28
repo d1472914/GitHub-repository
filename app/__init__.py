@@ -1,9 +1,10 @@
 import os
-from flask import Flask
+import sqlite3
+from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 from dotenv import load_dotenv
 
-# 載入環境變數 (.env)
+# 載入環境變數
 load_dotenv()
 
 # 建立 LoginManager
@@ -12,24 +13,49 @@ login_manager.login_view = 'auth.login_page'
 login_manager.login_message = '請先登入系統。'
 login_manager.login_message_category = 'warning'
 
+def init_db(app):
+    """初始化 SQLite 資料庫，執行 schema.sql 建立所有資料表"""
+    db_path = os.path.join(app.instance_path, 'database.db')
+    schema_path = os.path.join(app.root_path, '..', 'database', 'schema.sql')
+    
+    os.makedirs(app.instance_path, exist_ok=True)
+    
+    conn = sqlite3.connect(db_path)
+    try:
+        with open(schema_path, 'r', encoding='utf-8') as f:
+            conn.executescript(f.read())
+        conn.commit()
+        print("Database initialized successfully via schema.sql.")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+    finally:
+        conn.close()
+
 def create_app(test_config=None):
     """
     Flask App 工廠函式
-    建立、設定並初始化 Flask 應用程式
+    建立並設定 Flask 應用，初始化 SQLAlchemy 資料庫與註冊所有 Blueprint
     """
     app = Flask(__name__, instance_relative_config=True)
-
-    # 預設配置
+    
+    # 載入預設設定與環境變數
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'super_secret_key_for_development'),
-        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(app.instance_path, 'database.db')),
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'roommate_cooperation_super_secret_key_2026_dev_only'),
+        SQLALCHEMY_DATABASE_URI=os.environ.get(
+            'DATABASE_URL', 
+            'sqlite:///' + os.path.join(app.instance_path, 'database.db')
+        ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
     )
-
-    if test_config:
+    
+    if test_config is None:
+        # 嘗試載入 instance 中的 config.py
+        app.config.from_pyfile('config.py', silent=True)
+    else:
+        # 載入傳入的測試設定
         app.config.from_mapping(test_config)
-
-    # 確保 instance 目錄存在，用於存放 SQLite 資料庫
+        
+    # 確保實例資料夾存在
     try:
         os.makedirs(app.instance_path)
     except OSError:
@@ -51,8 +77,10 @@ def create_app(test_config=None):
     from app.routes import register_blueprints
     register_blueprints(app)
 
+    # 執行資料庫初始化 (建立 schema.sql 中定義的 15 張表)
+    init_db(app)
+
     # 根路由自動重導向至儀表板
-    from flask import redirect, url_for
     @app.route('/')
     def index():
         return redirect(url_for('dashboard.dashboard_page'))

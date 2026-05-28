@@ -1,3 +1,8 @@
+"""
+計算輔助工具 (Calc Helpers)
+提供電費分攤計算、帳務計算等共用邏輯。
+"""
+
 def calculate_expense_split(amount, num_people):
     """
     計算每人應均攤的開支金額。

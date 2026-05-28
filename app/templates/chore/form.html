@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{% if chore %}編輯任務{% else %}新增家事任務{% endif %} - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="card-title text-info mb-2">
+                {% if chore %}
+                    <i class="bi bi-pencil-square"></i> 編輯家事任務
+                {% else %}
+                    <i class="bi bi-calendar-plus"></i> 新增家事任務
+                {% endif %}
+            </h2>
+            <p class="text-muted small mb-4">
+                {% if chore %}
+                    修改目前家事任務的指派對象、截止時間或內容。
+                {% else %}
+                    發起一個新的家事整潔任務，分派給宿舍成員負責，並設定截止期限。
+                {% endif %}
+            </p>
+
+            <form action="{% if chore %}/chores/{{ chore.id }}/update{% else %}/chores{% endif %}" method="POST">
+                <!-- 任務名稱 -->
+                <div class="form-group mb-3">
+                    <label class="form-label" for="title">家事任務名稱</label>
+                    <input type="text" id="title" name="title" class="form-control" placeholder="例如：倒客廳垃圾、洗曬陽台腳踏墊" value="{% if chore %}{{ chore.title }}{% endif %}" required>
+                </div>
+
+                <!-- 任務敘述 -->
+                <div class="form-group mb-3">
+                    <label class="form-label" for="description">任務詳細說明 (選填)</label>
+                    <textarea id="description" name="description" rows="3" class="form-control" placeholder="可以描述打掃的標準，例如：垃圾袋綁好拿至B1垃圾回收場...">{% if chore %}{{ chore.description or '' }}{% endif %}</textarea>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <!-- 重複週期 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="recurrence">輪替頻率週期</label>
+                            <select id="recurrence" name="recurrence" class="form-select form-control" required>
+                                <option value="once" {% if chore and chore.recurrence == 'once' %}selected{% endif %}>單次任務 (Once)</option>
+                                <option value="daily" {% if chore and chore.recurrence == 'daily' %}selected{% endif %}>每日一次 (Daily)</option>
+                                <option value="weekly" {% if chore and chore.recurrence == 'weekly' %}selected{% endif %}>每週一次 (Weekly)</option>
+                                <option value="monthly" {% if chore and chore.recurrence == 'monthly' %}selected{% endif %}>每月一次 (Monthly)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 截止日期 -->
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label class="form-label" for="due_date">截止日期 / 執行日期</label>
+                            <input type="date" id="due_date" name="due_date" class="form-control" value="{% if chore %}{{ chore.due_date }}{% endif %}" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 指派對象 -->
+                <div class="form-group mb-4">
+                    <label class="form-label" for="assigned_to">負責的室友</label>
+                    <select id="assigned_to" name="assigned_to" class="form-select form-control" required>
+                        <option value="" disabled {% if not chore %}selected{% endif %}>請指派一位室友...</option>
+                        {% for member in members %}
+                            <option value="{{ member.id }}" {% if chore and chore.assigned_to == member.id %}selected{% endif %}>
+                                {{ member.nickname }} ({{ member.email }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 按鈕 -->
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="/chores" class="btn btn-secondary px-4">取消</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        {% if chore %}<i class="bi bi-save"></i> 儲存修改{% else %}<i class="bi bi-send"></i> 發表任務{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

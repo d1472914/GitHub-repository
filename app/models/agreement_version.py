@@ -88,7 +88,7 @@ class AgreementVersion(db.Model):
         before_lines = self.content_before.splitlines()
         after_lines = self.content_after.splitlines()
         
-        # 使用 Python 內建的 SequenceMatcher
+        # 使用 Python 內建 of SequenceMatcher
         matcher = difflib.SequenceMatcher(None, before_lines, after_lines)
         changes = []
         

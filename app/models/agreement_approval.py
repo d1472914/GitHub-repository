@@ -148,7 +148,7 @@ class AgreementApproval(db.Model):
         }
 
         for vote in all_votes:
-            user_info = {"user_id": vote.user_id, "name": vote.user.name if hasattr(vote.user, 'name') else "室友", "comment": vote.comment}
+            user_info = {"user_id": vote.user_id, "name": vote.user.nickname if hasattr(vote.user, 'nickname') else "室友", "comment": vote.comment}
             if vote.is_approved:
                 report["approved"].append(user_info)
             else:

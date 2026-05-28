@@ -1,92 +1,192 @@
 """
-Chore Model — 家事任務
-儲存隱形管家的排班任務
+Chore Model — 家事任務資料模型 (sqlite3 版本)
 """
 
-from datetime import datetime
-from app.models import db
+import os
+import sqlite3
 
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'instance', 'database.db')
 
-class Chore(db.Model):
-    __tablename__ = 'chores'
+def get_db_connection():
+    """建立 SQLite 資料庫連線"""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+    except sqlite3.Error as e:
+        print(f"Database connection error in chore model: {e}")
+        raise e
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    recurrence = db.Column(db.String(20), nullable=False, default='once')
-    due_date = db.Column(db.Date, nullable=False)
-    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='pending')
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    completed_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+def create(data):
+    """
+    建立新家事任務
+    :param data: dict, 包含 group_id, title, description, recurrence, due_date, assigned_to, created_by
+    :return: int 新增的任務 ID 或 None
+    """
+    sql = """
+    INSERT INTO chores (group_id, title, description, recurrence, due_date, assigned_to, status, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (
+                data.get('group_id'),
+                data.get('title'),
+                data.get('description'),
+                data.get('recurrence', 'once'),
+                data.get('due_date'),
+                data.get('assigned_to'),
+                data.get('status', 'pending'),
+                data.get('created_by')
+            ))
+            conn.commit()
+            return cursor.lastrowid
+    except sqlite3.Error as e:
+        print(f"Error in create chore: {e}")
+        return None
 
-    # 關聯
-    group = db.relationship('Group', backref='chores')
-    assignee = db.relationship('User', backref='assigned_chores', foreign_keys=[assigned_to])
-    creator = db.relationship('User', backref='created_chores', foreign_keys=[created_by])
+def get_all():
+    """
+    取得所有家事任務記錄
+    :return: list of Row
+    """
+    sql = "SELECT * FROM chores"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_all chores: {e}")
+        return []
 
-    def __repr__(self):
-        return f'<Chore {self.title} ({self.status})>'
+def get_by_group_id(group_id):
+    """
+    取得某個群組的所有家事任務
+    :param group_id: int, 群組 ID
+    :return: list of Row
+    """
+    sql = "SELECT * FROM chores WHERE group_id = ? ORDER BY due_date ASC"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (group_id,)).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_by_group_id chores ({group_id}): {e}")
+        return []
 
-    # ===== CRUD 方法 =====
+def get_pending_by_user(user_id):
+    """
+    取得某個使用者「所有待完成」的家事任務
+    :param user_id: int, 使用者 ID
+    :return: list of Row
+    """
+    sql = "SELECT * FROM chores WHERE assigned_to = ? AND status = 'pending' ORDER BY due_date ASC"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (user_id,)).fetchall()
+    except sqlite3.Error as e:
+        print(f"Error in get_pending_by_user chores ({user_id}): {e}")
+        return []
 
-    @classmethod
-    def create(cls, group_id, title, due_date, assigned_to, created_by,
-               description=None, recurrence='once'):
-        """建立新任務"""
-        chore = cls(
-            group_id=group_id,
-            title=title,
-            description=description,
-            recurrence=recurrence,
-            due_date=due_date,
-            assigned_to=assigned_to,
-            created_by=created_by
-        )
-        db.session.add(chore)
-        db.session.commit()
-        return chore
+def get_by_id(chore_id):
+    """
+    依 ID 取得單筆家事任務
+    :param chore_id: int, 任務 ID
+    :return: Row 或 None
+    """
+    sql = "SELECT * FROM chores WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            return conn.execute(sql, (chore_id,)).fetchone()
+    except sqlite3.Error as e:
+        print(f"Error in get_by_id chore ({chore_id}): {e}")
+        return None
 
-    @classmethod
-    def get_all(cls):
-        """取得所有任務"""
-        return cls.query.all()
+def update(chore_id, data):
+    """
+    更新家事任務資料
+    :param chore_id: int, 任務 ID
+    :param data: dict, 需要更新的欄位值
+    :return: bool 是否更新成功
+    """
+    if not data:
+        return False
+        
+    keys = list(data.keys())
+    set_clause = ", ".join([f"{key} = ?" for key in keys])
+    sql = f"UPDATE chores SET {set_clause} WHERE id = ?"
+    
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            params = [data[key] for key in keys]
+            params.append(chore_id)
+            cursor.execute(sql, params)
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in update chore ({chore_id}): {e}")
+        return False
 
-    @classmethod
-    def get_by_id(cls, chore_id):
-        """依 ID 取得任務"""
-        return cls.query.get(chore_id)
+def mark_completed(chore_id):
+    """
+    標記家事為已完成。
+    
+    Args:
+        chore_id (int): 家事 ID。
+        
+    Returns:
+        bool: 是否標記成功。
+    """
+    sql = "UPDATE chores SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?"
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql, (chore_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        logging.error(f"Error marking chore as completed: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
 
-    @classmethod
-    def get_by_group(cls, group_id):
-        """取得群組的所有任務（依到期日排序）"""
-        return cls.query.filter_by(group_id=group_id)\
-            .order_by(cls.due_date.asc()).all()
+    將家事任務標記為已完成，自動寫入完成時間 (completed_at)
+    :param chore_id: int, 任務 ID
+    :return: bool 是否成功
+    """
+    sql = """
+    UPDATE chores
+    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (chore_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in mark_completed chore ({chore_id}): {e}")
+        return False
 
-    @classmethod
-    def get_pending_by_user(cls, user_id):
-        """取得某使用者所有待完成的任務"""
-        return cls.query.filter_by(assigned_to=user_id, status='pending')\
-            .order_by(cls.due_date.asc()).all()
-
-    def mark_completed(self):
-        """標記任務已完成"""
-        self.status = 'completed'
-        self.completed_at = datetime.utcnow()
-        db.session.commit()
-        return self
-
-    def update(self, **kwargs):
-        """更新任務"""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-        db.session.commit()
-        return self
-
-    def delete(self):
-        """刪除任務"""
-        db.session.delete(self)
-        db.session.commit()
+def delete(chore_id):
+    """
+    刪除家事任務
+    :param chore_id: int, 任務 ID
+    :return: bool 是否刪除成功
+    """
+    sql = "DELETE FROM chores WHERE id = ?"
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (chore_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Error in delete chore ({chore_id}): {e}")
+        return False
