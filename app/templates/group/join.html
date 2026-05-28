@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}加入群組 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2 class="auth-title">加入現有群組</h2>
+        <p class="auth-subtitle">請向已建立群組的室友索取「6 位數邀請碼」</p>
+        
+        <form action="{{ url_for('group.join') }}" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="invite_code">群組邀請碼</label>
+                <input type="text" id="invite_code" name="invite_code" required placeholder="例如：A1B2C3" maxlength="6" class="form-control text-uppercase" style="text-align: center; font-size: 1.5rem; letter-spacing: 0.3rem;">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">加入群組</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>還沒有群組嗎？由您來發起建立吧！ <a href="{{ url_for('group.create_page') }}">建立新群組</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

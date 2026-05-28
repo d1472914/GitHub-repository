@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}{{ agreement.title }} - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="back-link-container">
+    <a href="{{ url_for('agreement.agreement_list') }}" class="back-link">&larr; 返回公約列表</a>
+</div>
+
+<div class="row">
+    <!-- 左側：公約條文與表決區 -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-between align-center">
+                <div>
+                    <span class="category-tag">{{ agreement.category }}</span>
+                    <span class="badge {% if agreement.status == 'active' %}badge-success{% elif agreement.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
+                        {{ '已生效' if agreement.status == 'active' else ('表決中' if agreement.status == 'pending' else '已否決') }}
+                    </span>
+                </div>
+                <div class="header-actions">
+                    {% if current_user.role == 'admin' or agreement.created_by == current_user.id %}
+                        <a href="{{ url_for('agreement.edit_page', id=agreement.id) }}" class="btn btn-sm btn-secondary">編輯公約</a>
+                        <form action="{{ url_for('agreement.delete', id=agreement.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('確定要刪除此公約嗎？這將會清除所有歷史版本與投票記錄！');">
+                            <button type="submit" class="btn btn-sm btn-danger">刪除</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <h1 class="agreement-detail-title">{{ agreement.title }}</h1>
+                <div class="agreement-meta text-muted mb-4">
+                    <span>提案人：{{ agreement.creator.nickname }}</span> | 
+                    <span>最後更新時間：{{ agreement.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                
+                <div class="agreement-content-box">
+                    <h4 class="text-muted mb-2">📄 當前最新條文：</h4>
+                    <p class="agreement-content-text">{{ agreement.content | replace('\n', '<br>') | safe }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 投票表決區 (僅在 pending 時顯示) -->
+        {% if agreement.status == 'pending' %}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning-light">
+                    <h3 class="card-title text-warning-dark">🗳️ 參與室友公約表決</h3>
+                </div>
+                <div class="card-body">
+                    {% if user_vote %}
+                        <div class="user-vote-alert bg-info-light mb-3">
+                            您已於 {{ user_vote.approved_at.strftime('%Y-%m-%d %H:%M') }} 投下了 
+                            <strong>{% if user_vote.is_approved %}<span class="text-success">同意票</span>{% else %}<span class="text-danger">反對票</span>{% endif %}</strong>。
+                            {% if user_vote.comment %}<br><span class="text-muted">「{{ user_vote.comment }}」</span>{% endif %}
+                        </div>
+                    {% endif %}
+                    
+                    <form action="{{ url_for('agreement.approve', id=agreement.id) }}" method="POST" class="voting-form">
+                        <div class="form-group">
+                            <label class="font-bold">您的表決決定：</label>
+                            <div class="voting-options">
+                                <label class="voting-option-btn option-approve">
+                                    <input type="radio" name="decision" value="approve" required {% if user_vote and user_vote.is_approved %}checked{% endif %}>
+                                    <span class="btn-text">👍 我同意</span>
+                                </label>
+                                <label class="voting-option-btn option-reject">
+                                    <input type="radio" name="decision" value="reject" required {% if user_vote and not user_vote.is_approved %}checked{% endif %}>
+                                    <span class="btn-text">👎 我反對 / 需修改</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="comment-group">
+                            <label for="comment" class="font-bold">評語或反對原因 <span class="reject-required-star text-danger" style="display:none;">(投反對票時必填)</span></label>
+                            <textarea id="comment" name="comment" rows="3" class="form-control" placeholder="請填寫您同意的建議或反對修改的理由...">{{ user_vote.comment if user_vote and user_vote.comment else '' }}</textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">提交投票</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- 版本歷史時間軸 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">⏳ 版本修訂歷程與文字差異比對</h3>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% for ver in versions %}
+                        <div class="timeline-item">
+                            <div class="timeline-badge">v{{ ver.version_number }}</div>
+                            <div class="timeline-panel">
+                                <div class="timeline-heading d-flex justify-between align-center">
+                                    <h4 class="timeline-title font-bold">{{ ver.title }}</h4>
+                                    <span class="text-muted text-xs">{{ ver.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                </div>
+                                <div class="timeline-body mt-2">
+                                    <p class="change-summary"><strong>異動說明：</strong> {{ ver.change_summary or '無異動說明' }}</p>
+                                    <p class="text-sm text-muted">修改人：{{ ver.modifier.nickname }}</p>
+                                    
+                                    <!-- 歷史版本文字內容 (抽屜式摺疊) -->
+                                    <div class="version-content-toggle mt-2">
+                                        <button class="btn btn-sm btn-link" onclick="toggleElement('version-text-{{ ver.id }}')">▶ 查看該版完整原文</button>
+                                        <div id="version-text-{{ ver.id }}" class="version-content-text-box" style="display:none;">
+                                            <p class="text-sm p-3 bg-light rounded text-pre-wrap">{{ ver.content_after }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 文字差異比對 (若有 diff_reports 且非初始版) -->
+                                    {% if diff_reports[ver.id] and diff_reports[ver.id].type == 'modification' and diff_reports[ver.id].changes %}
+                                        <div class="diff-container mt-3">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="toggleElement('diff-view-{{ ver.id }}')">🔍 展開/折疊差異比對 (Diff)</button>
+                                            <div id="diff-view-{{ ver.id }}" class="diff-view-box" style="display:none;">
+                                                {% for change in diff_reports[ver.id].changes %}
+                                                    <div class="diff-change-block">
+                                                        {% if change.type == 'replace' or change.type == 'delete' %}
+                                                            {% for line in change.old_lines %}
+                                                                <div class="diff-line diff-deleted">- <del>{{ line }}</del></div>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                        {% if change.type == 'replace' or change.type == 'insert' %}
+                                                            {% for line in change.new_lines %}
+                                                                <div class="diff-line diff-added">+ {{ line }}</div>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+
+                                    <!-- 版本回滾還原按鈕 -->
+                                    {% if agreement.status != 'pending' or ver.version_number != versions[0].version_number %}
+                                        <div class="rollback-container mt-3 text-right">
+                                            <form action="{{ url_for('agreement.rollback', id=agreement.id, version_id=ver.id) }}" method="POST" onsubmit="return confirm('確定要把公約還原至 V{{ ver.version_number }} 版本嗎？還原後會自動將公約狀態變為 pending，需要大家重新投票同意！');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">⏮ 還原至此歷史版本</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側：表決進度與室友表態名單 -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">📊 表決同意進度</h3>
+            </div>
+            <div class="card-body">
+                {% set pct = (progress.approved|length / progress.total_required * 100) | round | int %}
+                <div class="progress-container mb-3">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
+                    </div>
+                    <div class="progress-label d-flex justify-between mt-2 font-bold">
+                        <span>同意率：{{ pct }}%</span>
+                        <span>{{ progress.approved|length }} / {{ progress.total_required }} 同意</span>
+                    </div>
+                </div>
+                
+                <p class="text-sm text-muted mb-4">
+                    ⚠️ 根據宿舍管理規則，公約需要群組內全體成員同意才能生效。當前狀態為：
+                    {% if agreement.status == 'active' %}
+                        <span class="text-success font-bold">全體同意，已正式生效！</span>
+                    {% elif agreement.status == 'rejected' %}
+                        <span class="text-danger font-bold">已被否決 / 需要修正提案。</span>
+                    {% else %}
+                        <span class="text-warning font-bold">等待全體投票。</span>
+                    {% endif %}
+                </p>
+                
+                <hr>
+                
+                <h4 class="font-bold my-3">🟢 已投同意票的室友 ({{ progress.approved|length }} 人)</h4>
+                {% if progress.approved %}
+                    <ul class="vote-result-list">
+                        {% for voter in progress.approved %}
+                            <li class="vote-result-item">
+                                <div class="avatar avatar-success">{{ voter.name[0] }}</div>
+                                <div class="vote-details">
+                                    <div class="voter-name font-bold">{{ voter.name }}</div>
+                                    <div class="voter-comment text-muted">「{{ voter.comment or '投下同意票' }}」</div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted text-sm">目前還沒有人投同意票。</p>
+                {% endif %}
+
+                <h4 class="font-bold my-3">🔴 已投反對票的室友 ({{ progress.rejected|length }} 人)</h4>
+                {% if progress.rejected %}
+                    <ul class="vote-result-list">
+                        {% for voter in progress.rejected %}
+                            <li class="vote-result-item">
+                                <div class="avatar avatar-danger">{{ voter.name[0] }}</div>
+                                <div class="vote-details">
+                                    <div class="voter-name font-bold text-danger">{{ voter.name }}</div>
+                                    <div class="voter-comment text-muted font-bold">「{{ voter.comment }}」</div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted text-sm">目前沒有人投反對票，真是和諧！</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleElement(id) {
+    const el = document.getElementById(id);
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+// 監聽投票選項以顯示必填反對理由的紅星
+document.addEventListener('DOMContentLoaded', function() {
+    const radioApprove = document.querySelector('input[name="decision"][value="approve"]');
+    const radioReject = document.querySelector('input[name="decision"][value="reject"]');
+    const star = document.querySelector('.reject-required-star');
+    const comment = document.getElementById('comment');
+    
+    function updateStarVisibility() {
+        if (radioReject && radioReject.checked) {
+            star.style.display = 'inline';
+            comment.setAttribute('required', 'required');
+        } else {
+            star.style.display = 'none';
+            comment.removeAttribute('required');
+        }
+    }
+    
+    if (radioApprove && radioReject) {
+        radioApprove.addEventListener('change', updateStarVisibility);
+        radioReject.addEventListener('change', updateStarVisibility);
+        updateStarVisibility(); // 初始化
+    }
+});
+</script>
+{% endblock %}

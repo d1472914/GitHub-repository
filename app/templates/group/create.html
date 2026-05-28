@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}建立群組 - 宿舍共好{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2 class="auth-title">建立新群組</h2>
+        <p class="auth-subtitle">為您的寢室或租屋處建立一個專屬群組，並邀請室友加入</p>
+        
+        <form action="{{ url_for('group.create') }}" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="name">房間 / 群組名稱</label>
+                <input type="text" id="name" name="name" required placeholder="例如：男一舍 312 室 或 永康街租屋處" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">建立群組</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>想要加入室友已建立好的群組嗎？ <a href="{{ url_for('group.join_page') }}">加入群組</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

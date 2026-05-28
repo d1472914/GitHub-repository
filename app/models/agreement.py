@@ -1,3 +1,8 @@
+"""
+Agreement Model — 公約（完整功能版）
+儲存室友公約的最新內容，並包含版本修訂與審核流轉功能
+"""
+
 from datetime import datetime, timezone
 from app.models import db
 
@@ -17,7 +22,7 @@ class Agreement(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # 關聯
-    group = db.relationship('Group', backref='agreements')
+    group = db.relationship('Group', backref=db.backref('agreements', lazy='dynamic', cascade='all, delete-orphan'))
     creator = db.relationship('User', backref='created_agreements')
     
     # 🌟 cascade 配置優化：刪除公約時，一併乾淨抹除關聯的版本與投票，拒絕孤兒數據

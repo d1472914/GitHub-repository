@@ -47,10 +47,13 @@ CREATE TABLE IF NOT EXISTS agreements (
 -- ----- 4. 公約版本歷史 -----
 CREATE TABLE IF NOT EXISTS agreement_versions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
     agreement_id INTEGER NOT NULL,
     version_number INTEGER NOT NULL,
+    title VARCHAR(200) NOT NULL,
     content_before TEXT,
     content_after TEXT NOT NULL,
+    change_summary VARCHAR(250),
     modified_by INTEGER NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agreement_id) REFERENCES agreements (id),

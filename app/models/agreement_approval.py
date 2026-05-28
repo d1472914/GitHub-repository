@@ -1,3 +1,8 @@
+"""
+AgreementApproval Model — 公約同意/表決記錄
+記錄每位室友對公約的表決狀態、意見，並自動觸發公約狀態結算
+"""
+
 from datetime import datetime, timezone
 from app.models import db
 
@@ -13,7 +18,7 @@ class AgreementApproval(db.Model):
     # 🌟 優化：全面改用帶時區的 UTC 時間
     approved_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
-    # 唯一約束：每人每約只能同意一次
+    # 唯一約束：每人每約只能投一次票（投過只能用更新的）
     __table_args__ = (
         db.UniqueConstraint('agreement_id', 'user_id', name='uq_agreement_user'),
     )
@@ -22,7 +27,8 @@ class AgreementApproval(db.Model):
     user = db.relationship('User', backref='agreement_approvals')
 
     def __repr__(self):
-        return f'<AgreementApproval agreement={self.agreement_id} user={self.user_id}>'
+        status = "Approve" if self.is_approved else "Reject"
+        return f'<AgreementApproval agreement={self.agreement_id} user={self.user_id} status={status}>'
 
     # ========================================================
     # 核心 業務邏輯與 CRUD 方法
@@ -88,10 +94,9 @@ class AgreementApproval(db.Model):
 
     @classmethod
     def has_approved(cls, agreement_id, user_id):
-        """檢查某使用者是否已對某公約投過同意"""
-        return cls.query.filter_by(
-            agreement_id=agreement_id, user_id=user_id
-        ).first() is not None
+        """檢查某使用者是否已經投過【贊成票】"""
+        vote = cls.query.filter_by(agreement_id=agreement_id, user_id=user_id).first()
+        return vote is not None and vote.is_approved
 
     def update(self, **kwargs):
         """審計合規：投票紀錄原則上不允許直接修改 agreement_id 或 user_id"""
