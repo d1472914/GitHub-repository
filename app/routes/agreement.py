@@ -1,293 +1,240 @@
-"""
-公約管理路由 — 公約列表、詳情、新增、編輯、刪除、同意
-Blueprint prefix: /agreements
-"""
-
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g
-from app.routes.auth import login_required
-from app.models import Agreement, AgreementVersion, AgreementApproval, User
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask_login import login_required, current_user
+from app.models.agreement import Agreement
+from app.models.agreement_version import AgreementVersion
+from app.models.agreement_approval import AgreementApproval
+from app.models import db
 
 agreement_bp = Blueprint('agreement', __name__, url_prefix='/agreements')
 
+
 @agreement_bp.route('', methods=['GET'])
 @login_required
-def list_page():
-    """公約列表頁面
-    - 輸出：agreement/list.html
-    """
-    group_id = g.user['group_id']
-    if not group_id:
-        flash("請先加入或建立群組！", "warning")
+def agreement_list():
+    """公約列表"""
+    if not current_user.group_id:
+        flash('請先加入或建立群組。', 'warning')
         return redirect(url_for('group.create_page'))
 
-    try:
-        agreements = Agreement.get_by_group_id(group_id)
-        return render_template('agreement/list.html', agreements=agreements)
-    except Exception as e:
-        print(f"Error loading agreements list: {e}")
-        flash("載入公約列表失敗。", "error")
-        return redirect(url_for('dashboard.index'))
+    agreements_active = Agreement.get_by_group(current_user.group_id, status='active')
+    agreements_pending = Agreement.get_by_group(current_user.group_id, status='pending')
+    agreements_rejected = Agreement.get_by_group(current_user.group_id, status='rejected')
+
+    return render_template(
+        'agreement/list.html',
+        agreements_active=agreements_active,
+        agreements_pending=agreements_pending,
+        agreements_rejected=agreements_rejected
+    )
+
 
 @agreement_bp.route('/new', methods=['GET'])
 @login_required
 def new_page():
-    """顯示新增公約表單頁面
-    - 輸出：agreement/form.html
-    """
-    if not g.user['group_id']:
-        flash("請先加入或建立群組！", "warning")
+    """新增公約頁面"""
+    if not current_user.group_id:
+        flash('請先加入或建立群組。', 'warning')
         return redirect(url_for('group.create_page'))
-    return render_template('agreement/form.html', agreement=None)
+    return render_template('agreement/form.html', mode='create', agreement=None)
+
 
 @agreement_bp.route('', methods=['POST'])
 @login_required
 def create():
-    """新增公約處理
-    - 輸入：title, category, content
-    - 處理：Agreement.create() → AgreementVersion.create(v1) → AgreementApproval.create() (自動同意)
-    - 輸出：重導向 /agreements/<id>
-    """
-    group_id = g.user['group_id']
-    if not group_id:
-        flash("操作無效，您尚未加入群組！", "error")
-        return redirect(url_for('dashboard.index'))
+    """新增公約處理"""
+    if not current_user.group_id:
+        return abort(403)
 
-    title = request.form.get('title', '').strip()
-    category = request.form.get('category', '').strip()
-    content = request.form.get('content', '').strip()
+    title = request.form.get('title')
+    category = request.form.get('category')
+    content = request.form.get('content')
 
     if not title or not category or not content:
-        flash("所有欄位皆為必填！", "error")
-        return render_template('agreement/form.html', agreement=None)
+        flash('請填寫所有必要欄位。', 'danger')
+        return redirect(url_for('agreement.new_page'))
 
-    try:
-        # 1. 建立公約記錄 (預設 status='pending')
-        agreement_id = Agreement.create({
-            'group_id': group_id,
-            'title': title,
-            'category': category,
-            'content': content,
-            'status': 'pending',
-            'created_by': g.user['id']
-        })
+    # 建立公約（內部會自動呼叫 save_version_snapshot 建立 V1 快照）
+    agreement = Agreement.create(
+        group_id=current_user.group_id,
+        title=title,
+        category=category,
+        content=content,
+        created_by=current_user.id,
+        commit=True
+    )
 
-        if not agreement_id:
-            flash("新增公約失敗，請稍後再試。", "error")
-            return render_template('agreement/form.html', agreement=None)
+    # 提案者自動表態「同意」
+    AgreementApproval.cast_vote(
+        agreement_id=agreement.id,
+        user_id=current_user.id,
+        is_approved=True,
+        comment="發起新公約提案",
+        commit=True
+    )
 
-        # 2. 建立版本記錄 v1
-        AgreementVersion.create({
-            'agreement_id': agreement_id,
-            'version_number': 1,
-            'content_before': None,
-            'content_after': content,
-            'modified_by': g.user['id']
-        })
+    flash('公約提案已成功發起！等待全體室友投票同意。', 'success')
+    return redirect(url_for('agreement.detail', id=agreement.id))
 
-        # 3. 建立提案者的自動同意記錄
-        AgreementApproval.create({
-            'agreement_id': agreement_id,
-            'user_id': g.user['id']
-        })
 
-        # 4. 檢查是否全體群組成員都已同意 (如果群組只有提案者一人，直接生效)
-        members = User.get_by_group_id(group_id)
-        approvals = AgreementApproval.get_by_agreement_id(agreement_id)
-        if len(approvals) >= len(members):
-            Agreement.update(agreement_id, {'status': 'active'})
-            flash("公約提案成功，且已自動全票通過生效！", "success")
-        else:
-            flash("公約提案成功！已自動記錄您的同意，待全體成員同意後生效。", "success")
-
-        return redirect(url_for('agreement.detail_page', agreement_id=agreement_id))
-
-    except Exception as e:
-        print(f"Error creating agreement: {e}")
-        flash("伺服器錯誤，公約建立失敗。", "error")
-        return render_template('agreement/form.html', agreement=None)
-
-@agreement_bp.route('/<int:agreement_id>', methods=['GET'])
+@agreement_bp.route('/<int:id>', methods=['GET'])
 @login_required
-def detail_page(agreement_id):
-    """公約詳情與歷史版本
-    - 輸出：agreement/detail.html
-    """
-    try:
-        agreement = Agreement.get_by_id(agreement_id)
-        if not agreement or agreement['group_id'] != g.user['group_id']:
-            flash("找不到該公約，或您沒有權限存取！", "error")
-            return redirect(url_for('agreement.list_page'))
+def detail(id):
+    """公約詳情"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        flash('找不到該公約，或您沒有權限查看。', 'danger')
+        return redirect(url_for('agreement.agreement_list'))
 
-        # 取得歷史版本與同意情況
-        versions = AgreementVersion.get_by_agreement_id(agreement_id)
-        approvals = AgreementApproval.get_by_agreement_id(agreement_id)
-        
-        # 整理已同意名單
-        approved_user_ids = [appr['user_id'] for appr in approvals]
-        members = User.get_by_group_id(g.user['group_id'])
-        
-        has_approved = g.user['id'] in approved_user_ids
+    # 投票進度報告
+    progress = AgreementApproval.get_progress(id)
+    
+    # 檢查當前用戶是否已經投過票
+    user_vote = AgreementApproval.query.filter_by(agreement_id=id, user_id=current_user.id).first()
+    
+    # 取得版本歷史
+    versions = AgreementVersion.get_by_agreement(id)
 
-        return render_template(
-            'agreement/detail.html',
-            agreement=agreement,
-            versions=versions,
-            members=members,
-            approved_user_ids=approved_user_ids,
-            has_approved=has_approved
-        )
-    except Exception as e:
-        print(f"Error getting agreement detail: {e}")
-        flash("載入公約詳情失敗。", "error")
-        return redirect(url_for('agreement.list_page'))
+    # 為了在前端能直接拿 diff_report，我們為每個非 V1 的版本計算 diff
+    diff_reports = {}
+    for ver in versions:
+        diff_reports[ver.id] = ver.get_diff_report()
 
-@agreement_bp.route('/<int:agreement_id>/edit', methods=['GET'])
+    return render_template(
+        'agreement/detail.html',
+        agreement=agreement,
+        progress=progress,
+        user_vote=user_vote,
+        versions=versions,
+        diff_reports=diff_reports
+    )
+
+
+@agreement_bp.route('/<int:id>/edit', methods=['GET'])
 @login_required
-def edit_page(agreement_id):
-    """顯示編輯公約表單頁面
-    - 輸出：agreement/form.html
-    """
-    try:
-        agreement = Agreement.get_by_id(agreement_id)
-        if not agreement or agreement['group_id'] != g.user['group_id']:
-            flash("找不到該公約，或您沒有編輯權限！", "error")
-            return redirect(url_for('agreement.list_page'))
-            
-        return render_template('agreement/form.html', agreement=agreement)
-    except Exception as e:
-        print(f"Error loading agreement edit page: {e}")
-        flash("載入編輯頁面失敗。", "error")
-        return redirect(url_for('agreement.list_page'))
+def edit_page(id):
+    """編輯公約頁面"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        flash('找不到該公約，或您沒有權限編輯。', 'danger')
+        return redirect(url_for('agreement.agreement_list'))
+    return render_template('agreement/form.html', mode='edit', agreement=agreement)
 
-@agreement_bp.route('/<int:agreement_id>/update', methods=['POST'])
+
+@agreement_bp.route('/<int:id>/update', methods=['POST'])
 @login_required
-def update(agreement_id):
-    """更新公約 (只接受 POST)
-    - 輸入：title, category, content
-    - 處理：AgreementVersion.create() → Agreement.update() → 重設同意記錄 (自動同意修改者)
-    - 輸出：重導向 /agreements/<id>
-    """
-    try:
-        agreement = Agreement.get_by_id(agreement_id)
-        if not agreement or agreement['group_id'] != g.user['group_id']:
-            flash("公約不存在，或您沒有權限修改！", "error")
-            return redirect(url_for('agreement.list_page'))
+def update(id):
+    """更新公約"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        return abort(403)
 
-        title = request.form.get('title', '').strip()
-        category = request.form.get('category', '').strip()
-        content = request.form.get('content', '').strip()
+    title = request.form.get('title')
+    category = request.form.get('category')
+    content = request.form.get('content')
+    change_summary = request.form.get('change_summary', '修改公約條文')
 
-        if not title or not category or not content:
-            flash("所有欄位皆為必填！", "error")
-            return render_template('agreement/form.html', agreement=agreement)
+    if not title or not category or not content:
+        flash('請填寫所有必要欄位。', 'danger')
+        return redirect(url_for('agreement.edit_page', id=id))
 
-        # 1. 取得現有版本數，以決定新版本號
-        versions = AgreementVersion.get_by_agreement_id(agreement_id)
-        new_version_num = len(versions) + 1 if versions else 2
+    # 更新公約並退回 pending，清空舊投票
+    agreement.propose_revision(
+        title=title,
+        content=content,
+        updater_id=current_user.id,
+        change_summary=change_summary,
+        commit=True
+    )
 
-        # 2. 建立版本變更記錄
-        AgreementVersion.create({
-            'agreement_id': agreement_id,
-            'version_number': new_version_num,
-            'content_before': agreement['content'],
-            'content_after': content,
-            'modified_by': g.user['id']
-        })
+    # 修改提案人自己自動表態「同意」
+    AgreementApproval.cast_vote(
+        agreement_id=agreement.id,
+        user_id=current_user.id,
+        is_approved=True,
+        comment=f"提議修改並同意：{change_summary}",
+        commit=True
+    )
 
-        # 3. 更新公約主體，狀態重設為 pending 重新表決
-        Agreement.update(agreement_id, {
-            'title': title,
-            'category': category,
-            'content': content,
-            'status': 'pending'
-        })
+    flash('公約修改提案已提交，投票記錄已重設，等待室友重新表決。', 'success')
+    return redirect(url_for('agreement.detail', id=id))
 
-        # 4. 重設同意記錄 (刪除舊的，並自動加入修改者的同意)
-        AgreementApproval.delete_by_agreement_id(agreement_id)
-        AgreementApproval.create({
-            'agreement_id': agreement_id,
-            'user_id': g.user['id']
-        })
 
-        # 5. 再次檢查是否全體成員同意 (單人寢室)
-        members = User.get_by_group_id(g.user['group_id'])
-        if len(members) <= 1:
-            Agreement.update(agreement_id, {'status': 'active'})
-            flash("公約更新成功並已自動生效！", "success")
-        else:
-            flash("公約更新成功！內容變更已重設同意記錄，需重新由室友投票表決。", "success")
-
-        return redirect(url_for('agreement.detail_page', agreement_id=agreement_id))
-
-    except Exception as e:
-        print(f"Error updating agreement: {e}")
-        flash("更新公約失敗。", "error")
-        return redirect(url_for('agreement.list_page'))
-
-@agreement_bp.route('/<int:agreement_id>/delete', methods=['POST'])
+@agreement_bp.route('/<int:id>/approve', methods=['POST'])
 @login_required
-def delete(agreement_id):
-    """刪除公約 (只接受 POST)
-    - 處理：Agreement.delete()
-    - 輸出：重導向 /agreements
-    """
-    try:
-        agreement = Agreement.get_by_id(agreement_id)
-        if not agreement or agreement['group_id'] != g.user['group_id']:
-            flash("找不到該公約或無刪除權限！", "error")
-            return redirect(url_for('agreement.list_page'))
+def approve(id):
+    """同意/反對公約"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        return abort(403)
 
-        # 外鍵已開 PRAGMA foreign_keys = ON; 會自動聯級刪除版本與同意記錄
-        success = Agreement.delete(agreement_id)
-        if success:
-            flash("公約已成功刪除。", "success")
-        else:
-            flash("刪除公約失敗。", "error")
-            
-        return redirect(url_for('agreement.list_page'))
-    except Exception as e:
-        print(f"Error deleting agreement: {e}")
-        flash("刪除公約發生伺服器錯誤。", "error")
-        return redirect(url_for('agreement.list_page'))
+    decision = request.form.get('decision')  # 'approve' 或 'reject'
+    comment = request.form.get('comment', '').strip()
 
-@agreement_bp.route('/<int:agreement_id>/approve', methods=['POST'])
+    if decision not in ['approve', 'reject']:
+        flash('無效的表決決定。', 'danger')
+        return redirect(url_for('agreement.detail', id=id))
+
+    is_approved = (decision == 'approve')
+    
+    if not is_approved and not comment:
+        flash('投反對票時，請填寫原因/反對理由。', 'warning')
+        return redirect(url_for('agreement.detail', id=id))
+
+    # 智慧投票與自動狀態結算
+    AgreementApproval.cast_vote(
+        agreement_id=id,
+        user_id=current_user.id,
+        is_approved=is_approved,
+        comment=comment if comment else ("同意此公約" if is_approved else "反對此公約"),
+        commit=True
+    )
+
+    flash('投票提交成功！', 'success')
+    return redirect(url_for('agreement.detail', id=id))
+
+
+@agreement_bp.route('/<int:id>/versions/<int:version_id>/rollback', methods=['POST'])
 @login_required
-def approve(agreement_id):
-    """同意公約 (只接受 POST)
-    - 處理：AgreementApproval.create() → 檢查全體同意 → Agreement.update(status='active')
-    - 輸出：重導向 /agreements/<id>
-    """
-    try:
-        agreement = Agreement.get_by_id(agreement_id)
-        if not agreement or agreement['group_id'] != g.user['group_id']:
-            flash("找不到公約，或無存取權限！", "error")
-            return redirect(url_for('agreement.list_page'))
+def rollback(id, version_id):
+    """還原公約到指定版本"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        return abort(403)
 
-        # 1. 檢查是否已同意過
-        existing = AgreementApproval.check_exists(agreement_id, g.user['id'])
-        if existing:
-            flash("您已同意過此公約提案！", "info")
-            return redirect(url_for('agreement.detail_page', agreement_id=agreement_id))
+    version = AgreementVersion.get_by_id(version_id)
+    if not version or version.agreement_id != id:
+        flash('找不到該歷史版本。', 'danger')
+        return redirect(url_for('agreement.detail', id=id))
 
-        # 2. 建立同意記錄
-        AgreementApproval.create({
-            'agreement_id': agreement_id,
-            'user_id': g.user['id']
-        })
+    # 執行還原（內容覆蓋並重置 status 為 pending，清除舊投票）
+    version.rollback_agreement(operator_id=current_user.id, commit=True)
 
-        # 3. 檢查是否全體同意
-        members = User.get_by_group_id(g.user['group_id'])
-        approvals = AgreementApproval.get_by_agreement_id(agreement_id)
-        
-        if len(approvals) >= len(members):
-            Agreement.update(agreement_id, {'status': 'active'})
-            flash("您已同意！本公約全體室友皆已同意，正式生效！", "success")
-        else:
-            flash("您已表示同意此公約，等待其他室友同意。", "success")
+    # 執行還原的人自動同意此還原版本
+    AgreementApproval.cast_vote(
+        agreement_id=id,
+        user_id=current_user.id,
+        is_approved=True,
+        comment=f"執行版本回滾，還原至 V{version.version_number}",
+        commit=True
+    )
 
-        return redirect(url_for('agreement.detail_page', agreement_id=agreement_id))
+    flash(f'已將公約還原至 V{version.version_number} 快照！已啟動新一輪投票表決。', 'success')
+    return redirect(url_for('agreement.detail', id=id))
 
-    except Exception as e:
-        print(f"Error approving agreement: {e}")
-        flash("表示同意失敗。", "error")
-        return redirect(url_for('agreement.detail_page', agreement_id=agreement_id))
+
+@agreement_bp.route('/<int:id>/delete', methods=['POST'])
+@login_required
+def delete(id):
+    """刪除公約"""
+    agreement = Agreement.get_by_id(id)
+    if not agreement or agreement.group_id != current_user.group_id:
+        return abort(403)
+
+    # 限制管理員 or 提案人才能刪除
+    if current_user.role != 'admin' and agreement.created_by != current_user.id:
+        flash('只有管理員或提案人才能刪除此公約。', 'danger')
+        return redirect(url_for('agreement.detail', id=id))
+
+    agreement.delete(commit=True)
+    flash('公約已成功刪除。', 'success')
+    return redirect(url_for('agreement.agreement_list'))

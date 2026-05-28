@@ -1,335 +1,221 @@
 """
-Agreement Model — 公約資料模型 (sqlite3 版本)
+Agreement Model — 公約（完整功能版）
+儲存室友公約的最新內容，並包含版本修訂與審核流轉功能
 """
 
-import os
-import sqlite3
+from datetime import datetime, timezone
+from app.models import db
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'instance', 'database.db')
+class Agreement(db.Model):
+    __tablename__ = 'agreements'
 
-def get_db_connection():
-    """建立 SQLite 資料庫連線"""
-    try:
-        conn = sqlite3.connect(DATABASE_PATH)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
-    except sqlite3.Error as e:
-        print(f"Database connection error in agreement model: {e}")
-        raise e
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('groups.id', ondelete='CASCADE'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, active, rejected
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # 全面改用帶時區的 UTC 時間，預防跨時區伺服器解析錯誤
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # 關聯
+    group = db.relationship('Group', backref=db.backref('agreements', lazy='dynamic', cascade='all, delete-orphan'))
+    creator = db.relationship('User', backref='created_agreements')
+    
+    # 🌟 cascade 配置優化：刪除公約時，一併乾淨抹除關聯的版本與投票，拒絕孤兒數據
+    versions = db.relationship('AgreementVersion', backref='agreement', lazy='dynamic',
+                               cascade="all, delete-orphan",
+                               order_by='AgreementVersion.version_number.desc()')
+    approvals = db.relationship('AgreementApproval', backref='agreement', lazy='dynamic',
+                                cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<Agreement {self.title} status={self.status}>'
+
+    # ===== Dict-like 相容方法 =====
+    def __getitem__(self, key):
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    # ========================================================
+    # 核心 CRUD 與業務邏輯方法
+    # ========================================================
+
+    @classmethod
+    def create_agreement(cls, group_id, title, category, content, created_by, status='pending', commit=True):
+        """建立新公約，並自動產生 V1 歷史版本快照"""
+        agreement = cls(
+            group_id=group_id,
+            title=title,
+            category=category,
+            content=content,
+            status=status,
+            created_by=created_by
+        )
+        db.session.add(agreement)
+        db.session.flush()  # 先取得公約 id，以便關聯版本歷史
+
+        # 呼叫 AgreementVersion 的高階全自動建立快照方法
+        from app.models.agreement_version import AgreementVersion
+        AgreementVersion.save_version_snapshot(
+            agreement=agreement,
+            modified_by=created_by,
+            change_summary="建立初始公約 (V1)",
+            commit=False
+        )
+
+        if commit:
+            db.session.commit()
+        return agreement
+
+    @classmethod
+    def get_by_id(cls, agreement_id):
+        return db.session.get(cls, agreement_id)
+
+    @classmethod
+    def get_by_group(cls, group_id):
+        return cls.query.filter_by(group_id=group_id).order_by(cls.updated_at.desc()).all()
+
+    def update_agreement(self, data, modified_by, commit=True):
+        """
+        更新公約內容。
+        🌟 修正：只要 title 或 content 被修改，皆視為重大更新：
+        1. 自動將狀態退回 'pending' 重啟投票。
+        2. 安全清空舊的投票紀錄。
+        3. 自動呼叫 `AgreementVersion` 生成下一版差異紀錄（含標題快照）。
+        """
+        old_title = self.title
+        old_content = self.content
+        
+        new_title = data.get('title', old_title)
+        new_content = data.get('content', old_content)
+        
+        # 🌟 核心修正 1：擴大變更判定範圍，將 title 納入合規審查
+        core_changed = (new_content != old_content) or (new_title != old_title)
+
+        # 1. 欄位賦值
+        if 'title' in data:
+            self.title = new_title
+        if 'category' in data:
+            self.category = data['category']
+        if 'content' in data:
+            self.content = new_content
+        if 'status' in data:
+            self.status = data['status']
+            
+        # 2. 核心欄位有變動時的商業邏輯處理
+        if core_changed:
+            self.status = 'pending'
+            
+            # 🌟 核心修正 2：改用 ORM 級別的清空，避免直接 delete() 繞過緩存控制
+            from app.models.agreement_approval import AgreementApproval
+            AgreementApproval.query.filter_by(agreement_id=self.id).delete(synchronize_session='fetch')
+            
+            db.session.flush()  # 讓欄位變更在 session 內生效，以便快照抓取最新狀態
+
+            # 生成下一版歷史快照
+            from app.models.agreement_version import AgreementVersion
+            AgreementVersion.save_version_snapshot(
+                agreement=self,
+                modified_by=modified_by,
+                change_summary=data.get('change_summary', '修訂公約內容'),
+                commit=False
+            )
+
+        if commit:
+            db.session.commit()
+        return True
+
+    def add_approval(self, user_id, commit=True):
+        """對此公約進行室友投票，並自動判定是否全員通過觸發啟用"""
+        # 🌟 核心修正 3：狀態防禦，只有審核中的公約才能投票，防止對已生效/已拒絕的公約重複投票
+        if self.status != 'pending':
+            return False
+
+        from app.models.agreement_approval import AgreementApproval
+        
+        # 檢查是否重複投票 (防禦性設計)
+        exists = AgreementApproval.query.filter_by(agreement_id=self.id, user_id=user_id).first()
+        if not exists:
+            AgreementApproval.create_approval(agreement_id=self.id, user_id=user_id, commit=False)
+            db.session.flush()
+
+        # 檢查群組全員人數
+        total_members = len(self.group.members) if (self.group and self.group.members) else 1
+        approved_count = AgreementApproval.query.filter_by(agreement_id=self.id).count()
+
+        # 若同意人數達到或超過群組總人數，公約即刻生效！
+        if approved_count >= total_members:
+            self.status = 'active'
+            
+        if commit:
+            db.session.commit()
+        return True
+
+
+# ========================================================
+# ⚙️ Module-level wrappers (完全對齊重構後的方法，提供測試與相容性)
+# ========================================================
 
 def create(data):
-    """
-    建立新公約記錄
-    :param data: dict, 包含 group_id, title, category, content, status, created_by
-    :return: int 新增的公約 ID 或 None
-    """
-    sql = """
-    INSERT INTO agreements (group_id, title, category, content, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, (
-                data.get('group_id'),
-                data.get('title'),
-                data.get('category'),
-                data.get('content'),
-                data.get('status', 'pending'),
-                data.get('created_by')
-            ))
-            conn.commit()
-            return cursor.lastrowid
-    except sqlite3.Error as e:
-        print(f"Error in create agreement: {e}")
-        return None
-
-def get_all():
-    """
-    取得所有公約記錄
-    :return: list of Row
-    """
-    sql = "SELECT * FROM agreements"
-    try:
-        with get_db_connection() as conn:
-            return conn.execute(sql).fetchall()
-    except sqlite3.Error as e:
-        print(f"Error in get_all agreements: {e}")
-        return []
-
-def get_by_group_id(group_id):
-    """
-    取得某個群組的所有公約記錄
-    :param group_id: int, 群組 ID
-    :return: list of Row
-    """
-    sql = "SELECT * FROM agreements WHERE group_id = ?"
-    try:
-        with get_db_connection() as conn:
-            return conn.execute(sql, (group_id,)).fetchall()
-    except sqlite3.Error as e:
-        print(f"Error in get_by_group_id agreements ({group_id}): {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def update(agreement_id, data):
-    """
-    更新公約資料，若 content 有變動，則自動記錄新版本。
-    
-    Args:
-        agreement_id (int): 公約 ID。
-        data (dict): 更新的欄位與值（如 title, category, content, status, modified_by）。
-        
-    Returns:
-        bool: 是否更新成功。
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 取得更新前舊資料
-        cursor.execute("SELECT * FROM agreements WHERE id = ?", (agreement_id,))
-        old_agreement = cursor.fetchone()
-        if not old_agreement:
-            return False
-            
-        fields = ["updated_at = CURRENT_TIMESTAMP"]
-        params = {'id': agreement_id}
-        
-        # 動態欄位
-        for key in ['title', 'category', 'content', 'status']:
-            if key in data:
-                fields.append(f"{key} = :{key}")
-                params[key] = data[key]
-                
-        if len(fields) == 1: # 只有 updated_at
-            return False
-            
-        sql = f"UPDATE agreements SET {', '.join(fields)} WHERE id = :id"
-        cursor.execute(sql, params)
-        
-        # 若 content 有修改，新增版本歷史
-        if 'content' in data and data['content'] != old_agreement['content']:
-            # 取得目前的最新版本號
-            cursor.execute("SELECT MAX(version_number) FROM agreement_versions WHERE agreement_id = ?", (agreement_id,))
-            max_ver = cursor.fetchone()[0]
-            next_ver = (max_ver or 1) + 1
-            
-            modified_by = data.get('modified_by', old_agreement['created_by'])
-            
-            version_sql = """
-                INSERT INTO agreement_versions (agreement_id, version_number, content_before, content_after, modified_by)
-                VALUES (?, ?, ?, ?, ?)
-            """
-            cursor.execute(version_sql, (agreement_id, next_ver, old_agreement['content'], data['content'], modified_by))
-            
-            # 若公約內容被修改，且目前狀態是 active，可考慮重設同意狀態為 pending 讓室友重新投票
-            if old_agreement['status'] == 'active':
-                cursor.execute("UPDATE agreements SET status = 'pending' WHERE id = ?", (agreement_id,))
-                # 清空原本的同意記錄
-                cursor.execute("DELETE FROM agreement_approvals WHERE agreement_id = ?", (agreement_id,))
-                
-        conn.commit()
-        return True
-    except sqlite3.Error as e:
-        logging.error(f"Error updating agreement: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-def delete(agreement_id):
-    """
-    刪除公約（包括其關聯的所有版本與同意記錄）。
-    
-    Args:
-        agreement_id (int): 公約 ID。
-        
-    Returns:
-        bool: 是否刪除成功。
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 刪除關聯的 approvals 與 versions
-        cursor.execute("DELETE FROM agreement_approvals WHERE agreement_id = ?", (agreement_id,))
-        cursor.execute("DELETE FROM agreement_versions WHERE agreement_id = ?", (agreement_id,))
-        # 刪除公約本體
-        cursor.execute("DELETE FROM agreements WHERE id = ?", (agreement_id,))
-        
-        conn.commit()
-        return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        logging.error(f"Error deleting agreement: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-# --- 額外輔助函式：版本歷史與投票同意 ---
-
-def get_versions(agreement_id):
-    """
-    取得特定公約的變更歷史。
-    
-    Args:
-        agreement_id (int): 公約 ID。
-        
-    Returns:
-        list: 版本記錄 sqlite3.Row 列表。
-    """
-    sql = "SELECT * FROM agreement_versions WHERE agreement_id = ? ORDER BY version_number DESC"
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (agreement_id,))
-        return cursor.fetchall()
-    except sqlite3.Error as e:
-        logging.error(f"Error getting agreement versions: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def approve(agreement_id, user_id):
-    """
-    記錄室友同意公約。
-    
-    Args:
-        agreement_id (int): 公約 ID。
-        user_id (int): 室友使用者 ID。
-        
-    Returns:
-        bool: 是否投票成功。
-    """
-    sql = """
-        INSERT OR IGNORE INTO agreement_approvals (agreement_id, user_id)
-        VALUES (?, ?)
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (agreement_id, user_id))
-        conn.commit()
-        return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        logging.error(f"Error approving agreement: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-def get_approvals(agreement_id):
-    """
-    取得已同意特定公約的室友記錄。
-    
-    Args:
-        agreement_id (int): 公約 ID。
-        
-    Returns:
-        list: 同意記錄列表，包含使用者暱稱。
-    """
-    sql = """
-        SELECT a.*, u.nickname 
-        FROM agreement_approvals a
-        JOIN users u ON a.user_id = u.id
-        WHERE a.agreement_id = ?
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(sql, (agreement_id,))
-        return cursor.fetchall()
-    except sqlite3.Error as e:
-        logging.error(f"Error getting agreement approvals: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
+    agreement = Agreement.create_agreement(
+        group_id=data.get('group_id'),
+        title=data.get('title'),
+        category=data.get('category'),
+        content=data.get('content'),
+        status=data.get('status', 'pending'),
+        created_by=data.get('created_by'),
+        commit=True
+    )
+    return agreement.id
 
 def get_by_id(agreement_id):
-    """
-    依 ID 取得單筆公約記錄
-    :param agreement_id: int, 公約 ID
-    :return: Row 或 None
-    """
-    sql = "SELECT * FROM agreements WHERE id = ?"
-    try:
-        with get_db_connection() as conn:
-            return conn.execute(sql, (agreement_id,)).fetchone()
-    except sqlite3.Error as e:
-        print(f"Error in get_by_id agreement ({agreement_id}): {e}")
-        return None
+    return Agreement.get_by_id(agreement_id)
+
+def get_by_group(group_id):
+    return Agreement.get_by_group(group_id)
 
 def update(agreement_id, data):
-    """
-    更新公約資料
-    :param agreement_id: int, 公約 ID
-    :param data: dict, 需要更新的欄位值，例如 {'title': '新公約名稱', 'content': '新內容', 'status': 'active', 'updated_at': '...'}
-    :return: bool 是否更新成功
-    """
-    if not data:
+    agreement = Agreement.get_by_id(agreement_id)
+    if not agreement:
         return False
-        
-    keys = list(data.keys())
-    # 自動補上更新時間欄位，若沒有帶的話
-    if 'updated_at' not in keys:
-        keys.append('updated_at')
-        data['updated_at'] = sqlite3.Timestamp if hasattr(sqlite3, 'Timestamp') else 'CURRENT_TIMESTAMP'
-        # 由於 CURRENT_TIMESTAMP 在預留字元中會作為字串寫入，這裡我們用 SQLite 內置函數在組裝時特別處理
-        
-    set_clauses = []
-    params = []
-    for key in keys:
-        if key == 'updated_at' and data[key] == 'CURRENT_TIMESTAMP':
-            set_clauses.append("updated_at = CURRENT_TIMESTAMP")
-        else:
-            set_clauses.append(f"{key} = ?")
-            params.append(data[key])
-            
-    set_clause = ", ".join(set_clauses)
-    sql = f"UPDATE agreements SET {set_clause} WHERE id = ?"
-    params.append(agreement_id)
     
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, params)
-            conn.commit()
-            return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        print(f"Error in update agreement ({agreement_id}): {e}")
+    modified_by = data.get('modified_by', agreement.created_by)
+    return agreement.update_agreement(data, modified_by=modified_by, commit=True)
+
+def get_versions(agreement_id):
+    from app.models.agreement_version import AgreementVersion
+    return AgreementVersion.get_by_agreement(agreement_id)
+
+def approve(agreement_id, user_id):
+    agreement = Agreement.get_by_id(agreement_id)
+    if not agreement:
         return False
+    return agreement.add_approval(user_id, commit=True)
+
+def get_approvals(agreement_id):
+    """🌟 核心修正 4：調用已優化優良的 AgreementApproval 查詢，內聯 Joinedload 阻斷 N+1 效能問題"""
+    from app.models.agreement_approval import AgreementApproval
+    approvals = AgreementApproval.get_by_agreement(agreement_id)
+    return [
+        {
+            'user_id': ap.user_id,
+            'nickname': ap.user.nickname if (hasattr(ap, 'user') and ap.user) else '室友'
+        }
+        for ap in approvals
+    ]
 
 def delete(agreement_id):
-    """
-    刪除公約記錄
-    :param agreement_id: int, 公約 ID
-    :return: bool 是否刪除成功
-    """
-    sql = "DELETE FROM agreements WHERE id = ?"
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, (agreement_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-    except sqlite3.Error as e:
-        print(f"Error in delete agreement ({agreement_id}): {e}")
-        return False
+    agreement = Agreement.get_by_id(agreement_id)
+    if agreement:
+        db.session.delete(agreement)
+        db.session.commit()
+        return True
+    return False

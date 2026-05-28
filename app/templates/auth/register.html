@@ -3,30 +3,38 @@
 {% block title %}註冊 - 宿舍共好{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width: 500px; margin: 40px auto;">
-    <h2 class="card-title">📝 建立新帳號</h2>
-    <form action="/auth/register" method="POST">
-        <div class="form-group">
-            <label class="form-label" for="nickname">暱稱</label>
-            <input type="text" id="nickname" name="nickname" class="form-control" placeholder="顯示在介面上的名字" required>
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2 class="auth-title">註冊帳號</h2>
+        <p class="auth-subtitle">加入宿舍共好，共同維護良好的宿舍與租屋生活</p>
+        
+        <form action="{{ url_for('auth.register') }}" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="nickname">暱稱 / 姓名</label>
+                <input type="text" id="nickname" name="nickname" required placeholder="例如：阿明" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">電子郵件 (Email)</label>
+                <input type="email" id="email" name="email" required placeholder="example@example.com" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密碼</label>
+                <input type="password" id="password" name="password" required placeholder="至少 6 位密碼" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">確認密碼</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="再次輸入密碼" class="form-control">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">註冊</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>已經有帳號了嗎？ <a href="{{ url_for('auth.login_page') }}">立即登入</a></p>
         </div>
-        <div class="form-group">
-            <label class="form-label" for="email">電子信箱</label>
-            <input type="email" id="email" name="email" class="form-control" placeholder="example@email.com" required>
-        </div>
-        <div class="form-group">
-            <label class="form-label" for="password">密碼</label>
-            <input type="password" id="password" name="password" class="form-control" placeholder="請設定 6 位以上密碼" required>
-        </div>
-        <div class="form-group">
-            <label class="form-label" for="confirm_password">確認密碼</label>
-            <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="請再次輸入密碼" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">註冊</button>
-    </form>
-    <div style="margin-top: 20px; text-align: center; font-size: 0.9rem;">
-        <span style="color: var(--text-muted);">已經有帳號了？</span>
-        <a href="/auth/login" style="color: var(--primary); text-decoration: none; font-weight: 600;">按此登入</a>
     </div>
 </div>
 {% endblock %}

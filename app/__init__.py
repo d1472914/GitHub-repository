@@ -2,9 +2,14 @@ import os
 import sqlite3
 from flask import Flask, redirect, url_for
 from flask_login import LoginManager
+from dotenv import load_dotenv
 
+# 載入環境變數
+load_dotenv()
+
+# 建立 LoginManager
 login_manager = LoginManager()
-login_manager.login_view = 'auth.login'
+login_manager.login_view = 'auth.login_page'
 login_manager.login_message = '請先登入系統。'
 login_manager.login_message_category = 'warning'
 
@@ -20,27 +25,16 @@ def init_db(app):
         with open(schema_path, 'r', encoding='utf-8') as f:
             conn.executescript(f.read())
         conn.commit()
-        print("Database initialized successfully.")
+        print("Database initialized successfully via schema.sql.")
     except Exception as e:
         print(f"Error initializing database: {e}")
     finally:
         conn.close()
 
 def create_app(test_config=None):
-    # Create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
-    
-    # 預設設定
-    app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev_key_roommate_system'),
-from flask import Flask
-from app.models import db
-from app.routes import register_blueprints
-
-def create_app(test_config=None):
     """
     Flask App 工廠函式
-    建立並設定 Flask 應用，初始化資料庫與註冊所有 Blueprint
+    建立並設定 Flask 應用，初始化 SQLAlchemy 資料庫與註冊所有 Blueprint
     """
     app = Flask(__name__, instance_relative_config=True)
     
@@ -67,35 +61,33 @@ def create_app(test_config=None):
     except OSError:
         pass
 
+    # 初始化 SQLAlchemy db
+    from app.models import db
+    db.init_app(app)
 
-    # Initialize extensions
+    # 初始化 LoginManager
     login_manager.init_app(app)
-
-    from app.utils.auth_helpers import load_user_object
 
     @login_manager.user_loader
     def load_user(user_id):
-        return load_user_object(user_id)
+        from app.models.user import User
+        return User.get_by_id(int(user_id))
 
+    # 註冊所有 Blueprint
     from app.routes import register_blueprints
     register_blueprints(app)
 
-    # 執行資料庫初始化
+    # 執行資料庫初始化 (建立 schema.sql 中定義的 15 張表)
     init_db(app)
 
+    # 根路由自動重導向至儀表板
     @app.route('/')
     def index():
-        return redirect(url_for('dashboard.index'))
+        return redirect(url_for('dashboard.dashboard_page'))
 
-    @app.route('/hello')
-    def hello():
-        return 'Hello, Roommate System!'
+    # 注入 app 變數至 Jinja2 全域上下文，供 base.html 偵測已註冊的 Blueprints
+    @app.context_processor
+    def inject_app():
+        return dict(app=app)
 
-        
-    # 初始化 SQLAlchemy
-    db.init_app(app)
-    
-    # 註冊所有模組化 Blueprint 路由
-    register_blueprints(app)
-    
     return app
