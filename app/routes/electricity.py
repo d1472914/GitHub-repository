@@ -110,8 +110,8 @@ def detail_page(bill_id):
         splits = ElectricitySplit.get_by_bill_id(bill_id)
         members = User.get_by_group_id(g.user['group_id'])
         
-        # 對照字典
-        members_map = {m['id']: m for m in members}
+        # ✅ 修正處：將 sqlite3.Row 轉為 dict
+        members_map = {m['id']: dict(m) for m in members}
         
         # 整理登錄進度與已提交名單
         submitted_user_ids = [r['user_id'] for r in readings]

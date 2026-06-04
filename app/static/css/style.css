@@ -35,6 +35,15 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 顏色與文字輔助類別 (Text utility classes for readability in dark theme) */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-danger-custom {
+    color: #f87171 !important; /* Lighter red for visibility on dark backgrounds */
+}
+
 /* 基本重設 */
 * {
     box-sizing: border-box;
@@ -212,7 +221,7 @@ body {
     padding: 12px 16px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(0, 0, 0, 0.3) !important;
+    background-color: #111827 !important; /* Use solid opaque dark background to ensure text visibility */
     color: var(--text-main) !important;
     font-size: 0.95rem;
     transition: var(--transition-smooth);
@@ -222,18 +231,53 @@ body {
     outline: none;
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
-    background-color: rgba(0, 0, 0, 0.45) !important;
+    background-color: #1f2937 !important; /* Solid dark background on focus */
     color: var(--text-main) !important;
 }
 
-/* 確保瀏覽器自動填入 (Autofill) 不會破壞深色主題字型顏色 */
+/* 確保下拉選單 (select) 與選單項目 (option) 在深色主題下文字清晰可見 */
+.form-select, select.form-control {
+    background-color: #111827 !important;
+    color: var(--text-main) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.form-select:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+}
+
+.form-select option, select.form-control option {
+    background-color: #111827 !important; /* 確保選單背景是深色 */
+    color: var(--text-main) !important;    /* 確保選文字是白色 */
+}
+
+/* 解決 HTML5 日期選擇器 (input[type="date"]) 在深色主題下的預設樣式與文字顏色問題 */
+input[type="date"].form-control {
+    color-scheme: dark; /* 讓瀏覽器將內建控制項與行事曆改為深色模式樣式 */
+}
+
+/* 確保瀏覽器自動填入 (Autofill) 不會破壞深色主題字型與背景顏色 */
 .form-control:-webkit-autofill,
 .form-control:-webkit-autofill:hover, 
 .form-control:-webkit-autofill:focus, 
-.form-control:-webkit-autofill:active {
+.form-control:-webkit-autofill:active,
+.form-control:autofill,
+.form-control:autofill:hover,
+.form-control:autofill:focus,
+.form-control:autofill:active,
+.form-select:-webkit-autofill,
+.form-select:-webkit-autofill:hover,
+.form-select:-webkit-autofill:focus,
+.form-select:-webkit-autofill:active,
+.form-select:autofill,
+.form-select:autofill:hover,
+.form-select:autofill:focus,
+.form-select:autofill:active {
     -webkit-text-fill-color: var(--text-main) !important;
+    color: var(--text-main) !important;
     transition: background-color 5000s ease-in-out 0s;
-    box-shadow: 0 0 0px 1000px rgba(10, 15, 29, 0.9) inset !important;
+    box-shadow: 0 0 0px 1000px #0a0f1d inset !important;
 }
 
 

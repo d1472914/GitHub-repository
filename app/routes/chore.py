@@ -22,7 +22,8 @@ def list_page():
 
     try:
         chores = Chore.get_by_group_id(group_id)
-        members = {m['id']: m for m in User.get_by_group_id(group_id)}
+        # ✅ 修正處：將 sqlite3.Row 轉為 dict，這樣後面才能順利使用 .get('nickname')
+        members = {m['id']: dict(m) for m in User.get_by_group_id(group_id)}
         
         # 組裝暱稱
         chore_list = []
@@ -61,8 +62,10 @@ def calendar():
 
     try:
         chores = Chore.get_by_group_id(group_id)
-        members = {m['id']: m for m in User.get_by_group_id(group_id)}
+        # ✅ 修正處：這裡也同步將成員轉為 dict 防止日曆頁面報錯
+        members = {m['id']: dict(m) for m in User.get_by_group_id(group_id)}
         
+        # 組裝日曆事件
         chore_events = []
         for ch in chores:
             assignee_name = members.get(ch['assigned_to'], {}).get('nickname', '未分配')

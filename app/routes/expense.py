@@ -24,8 +24,8 @@ def list_page():
         # 取得該群組的所有開支記錄
         expenses = Expense.get_by_group_id(group_id)
         
-        # 取得所有成員對照字典，方便顯示暱稱
-        members = {m['id']: m for m in User.get_by_group_id(group_id)}
+        # ✅ 修正處：將 sqlite3.Row 轉為 dict，避免後續 .get('nickname') 報錯
+        members = {m['id']: dict(m) for m in User.get_by_group_id(group_id)}
         
         # 取得每個開支的分攤明細
         expense_details = []
@@ -189,8 +189,9 @@ def balance_page():
         unsettled_receivables = conn.execute(sql_receivables, (current_user_id, current_user_id)).fetchall()
         conn.close()
 
-        # 計算對每個成員的淨額
-        members_map = {m['id']: m for m in members if m['id'] != current_user_id}
+        # 计算对每个成员的净额
+        # ✅ 修正處：這裡轉換為字典格式，防止稍後讀取暱稱時報錯
+        members_map = {m['id']: dict(m) for m in members if m['id'] != current_user_id}
         net_balances = {m_id: 0.0 for m_id in members_map}
 
         # 扣減：我欠別人的金額

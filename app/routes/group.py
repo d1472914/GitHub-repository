@@ -5,6 +5,7 @@ Blueprint prefix: /group
 
 import secrets
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
+from werkzeug.security import generate_password_hash
 from app.routes.auth import login_required
 from app.models import Group, User
 
@@ -150,3 +151,57 @@ def update_settings():
         print(f"Error updating group settings: {e}")
         flash("伺服器錯誤，更新失敗。", "error")
         return redirect(url_for('group.settings_page'))
+    
+@group_bp.route('/add_member', methods=['POST'])
+@login_required
+def add_member():
+    """處理加入群組的請求，若使用者不存在則新增使用者並設定預設密碼"""
+    group_id = g.user['group_id']
+    if not group_id:
+        flash("您尚未加入或建立任何群組！", "warning")
+        return redirect(url_for('group.create_page'))
+
+    nickname = request.form.get('nickname', '').strip()
+    email = request.form.get('email', '').strip()
+
+    if not nickname:
+        flash("室友暱稱不可為空！", "error")
+        return redirect(url_for('group.settings_page'))
+
+    # 若未提供電子信箱，自動產生一個唯一的 placeholder 信箱
+    if not email:
+        email = f"user_{secrets.token_hex(4)}@example.com"
+
+    try:
+        # 檢查該電子信箱是否已存在
+        existing_user = User.get_by_email(email)
+        if existing_user:
+            if existing_user['group_id'] == group_id:
+                flash(f"使用者「{existing_user['nickname']}」已在群組中！", "info")
+            elif existing_user['group_id']:
+                flash("此電子信箱已被其他群組成員使用！", "error")
+            else:
+                # 使用者存在但沒有群組，直接將其加入目前群組
+                User.update(existing_user['id'], {'group_id': group_id, 'role': 'member'})
+                flash(f"已將現有使用者「{existing_user['nickname']}」加入群組！", "success")
+        else:
+            # 建立新使用者並設定預設密碼
+            hashed_password = generate_password_hash("123456")
+            user_data = {
+                'email': email,
+                'password_hash': hashed_password,
+                'nickname': nickname,
+                'role': 'member',
+                'group_id': group_id
+            }
+            new_user_id = User.create(user_data)
+            if new_user_id:
+                flash(f"成功新增室友「{nickname}」，預設密碼為 123456", "success")
+            else:
+                flash("新增室友失敗，請稍後再試。", "error")
+
+    except Exception as e:
+        print(f"Error adding roommate: {e}")
+        flash("伺服器錯誤，新增室友失敗。", "error")
+
+    return redirect(url_for('group.settings_page'))

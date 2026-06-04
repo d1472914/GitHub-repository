@@ -8,7 +8,6 @@
         <div class="card p-4">
             <h2 class="card-title text-info mb-4"><i class="bi bi-gear-fill"></i> 群組設定與成員管理</h2>
             
-            <!-- 資訊面板 -->
             <div class="bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded-3 p-4 mb-4">
                 <h3 class="h5 text-white mb-3"><i class="bi bi-info-circle text-primary me-2"></i> 群組基本資訊</h3>
                 <div class="row g-3">
@@ -28,7 +27,6 @@
                 </div>
             </div>
 
-            <!-- 修改群組名稱表單 -->
             <form action="/group/settings" method="POST" class="mb-5">
                 <h3 class="h5 text-white mb-3"><i class="bi bi-pencil-square text-warning me-2"></i> 修改群組資訊</h3>
                 <div class="form-group mb-3">
@@ -38,9 +36,16 @@
                 <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> 儲存設定</button>
             </form>
 
-            <!-- 室友成員列表 -->
             <div>
-                <h3 class="h5 text-white mb-3"><i class="bi bi-people text-info me-2"></i> 室友成員列表 (共 {{ members|length }} 人)</h3>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h5 text-white mb-0">
+                        <i class="bi bi-people text-info me-2"></i> 室友成員列表 (共 {{ members|length }} 人)
+                    </h3>
+                    <button class="btn btn-success btn-sm px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#addRoommateModal">
+                        <i class="bi bi-person-plus-fill"></i> 新增室友
+                    </button>
+                </div>
+
                 <div class="list-group list-group-flush bg-transparent">
                     {% for member in members %}
                         <div class="list-group-item bg-transparent text-white border-bottom border-secondary border-opacity-25 py-3 px-0 d-flex justify-content-between align-items-center">
@@ -63,4 +68,65 @@
         </div>
     </div>
 </div>
+
+<!-- 新增室友 Modal -->
+<div class="modal fade" id="addRoommateModal" tabindex="-1" aria-labelledby="addRoommateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border border-secondary border-opacity-50 text-white rounded-3 shadow-lg" style="background-color: #0f172a !important;">
+            <div class="modal-header border-bottom border-secondary border-opacity-25 p-3">
+                <h5 class="modal-title" id="addRoommateModalLabel"><i class="bi bi-person-plus text-info me-2"></i> 新增室友成員</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- 方式一：複製邀請碼 -->
+                <div class="mb-4 pb-4 border-bottom border-secondary border-opacity-25">
+                    <h6 class="text-white-50 mb-2"><i class="bi bi-link-45deg text-primary me-2"></i> 方式一：使用邀請碼邀請</h6>
+                    <p class="text-muted small">複製邀請碼給室友，由室友自行註冊並加入群組。</p>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <span class="badge bg-primary fs-6 font-heading px-3 py-2" style="background-color: var(--primary) !important;">{{ group.invite_code }}</span>
+                        <button class="btn btn-sm btn-outline-secondary py-2 px-3" onclick="copyInviteCodeInModal()">
+                            <i class="bi bi-clipboard"></i> 複製邀請碼
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 方式二：手動新增 -->
+                <form action="/group/add_member" method="POST">
+                    <h6 class="text-white-50 mb-3"><i class="bi bi-pencil-square text-warning me-2"></i> 方式二：手動直接新增 (免連結)</h6>
+                    <p class="text-muted small">無需室友註冊，直接在系統中建立該成員，以便快速分派家事與記帳。</p>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label text-white-50 small mb-1" for="roommate_nickname">室友暱稱 <span class="text-danger">*</span></label>
+                        <input type="text" id="roommate_nickname" name="nickname" class="form-control" placeholder="例如：小明、阿華" required>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label class="form-label text-white-50 small mb-1" for="roommate_email">電子信箱 (選填)</label>
+                        <input type="email" id="roommate_email" name="email" class="form-control" placeholder="例如：xiaoming@example.com (留空將自動產生)">
+                    </div>
+
+                    <div class="p-3 bg-dark bg-opacity-50 border border-warning border-opacity-25 rounded text-warning small mb-3">
+                        <i class="bi bi-info-circle me-1"></i> 手動新增的室友預設密碼為 <strong>123456</strong>，建立後即可直接於系統內分派任務及分攤費用。
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-person-check-fill"></i> 確認新增</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyInviteCodeInModal() {
+    const inviteCode = "{{ group.invite_code }}";
+    navigator.clipboard.writeText(inviteCode).then(() => {
+        alert("📋 邀請碼 [" + inviteCode + "] 已複製到剪貼簿！");
+    }).catch(err => {
+        alert("邀請碼為： " + inviteCode + " ，請手動複製！");
+    });
+}
+</script>
 {% endblock %}
